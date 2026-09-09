@@ -520,7 +520,7 @@ def gen_asgi_app(config_path: str | None = None) -> FastAPI:
 const heroFacts = computed<LabelValueItem[]>(() => [
   { value: "FastAPI", label: t("landing.hero.factFramework") },
   { value: ">= 3.11", label: t("landing.hero.factPython") },
-  { value: "0.2.1", label: t("landing.hero.factVersion") },
+  { value: "0.2.3", label: t("landing.hero.factVersion") },
   { value: "RS256", label: t("landing.hero.factJwt") },
 ]);
 
@@ -691,7 +691,7 @@ const stackItems = computed(() => [
 
 const statusItems = computed<LabelValueItem[]>(() => [
   { value: "Python >= 3.11", label: t("landing.status.python") },
-  { value: "0.2.1", label: t("landing.status.version") },
+  { value: "0.2.3", label: t("landing.status.version") },
   { value: "Pre-Alpha", label: t("landing.status.stage") },
   { value: "MySQL", label: t("landing.status.mysql") },
 ]);

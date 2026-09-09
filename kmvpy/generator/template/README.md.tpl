@@ -10,7 +10,7 @@ KMVPy 是面向 FastAPI 后端项目的基础库与工程脚手架。它的目�
 
 - 服务端框架：FastAPI
 - Python 版本：`>= 3.11`
-- KMVPy 当前展示版本：`0.2.1`
+- KMVPy 当前展示版本：`0.2.3`
 - 默认 JWT 算法：`RS256`
 - 成熟度：Pre-Alpha，适合内部工程底座、试点项目和愿意快速反馈的团队
 - MySQL：可选依赖，也可以按需要接入 PostgreSQL、SQLite 或其他存储
@@ -96,7 +96,7 @@ kmvpy rotate-jwt-keys app/etc/release/config.yaml
 当前后端工程位于 `__PY_PROJECT_NAME__/`。它的 `pyproject.toml` 依赖 PyPI 上发布的 KMVPy：
 
 ```toml
-kmvpy>=0.2.1
+kmvpy>=0.2.3
 ```
 
 如果你的环境没有这个本地路径，需要先安装可用的 KMVPy 包或调整依赖来源。
@@ -330,7 +330,7 @@ Python `>= 3.11`。生成项目默认围绕现代类型标注、async I/O 与 Py
 
 ### 当前成熟度如何？
 
-当前首页展示版本为 `0.2.1`，Development Status 是 Beta。它更适合内部工程底座、试点项目和愿意快速反馈的团队。
+当前首页展示版本为 `0.2.3`，Development Status 是 Beta。它更适合内部工程底座、试点项目和愿意快速反馈的团队。
 
 ### MySQL 是必须的吗？
 

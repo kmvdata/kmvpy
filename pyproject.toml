@@ -11,7 +11,7 @@ authors = [
 maintainers = [
     {name = "kermit.mei", email = "kermit.mei@gmail.com"}
 ]
-description = "基于 FastAPI 的服务端基础库：YAML 配置、异步 SQLAlchemy 领域层、统一响应与异常、JWT、APScheduler 调度、Socket.IO，以及工程脚手架（Python + 前端 + 冒烟测试模板）。"
+description = "FastAPI-based server-side foundation library: YAML configuration, async SQLAlchemy domain layer, unified response and exception handling, JWT, APScheduler scheduling, Socket.IO, and an engineering scaffold (Python + frontend + smoke-test templates)."
 readme = {file = "README.md", content-type = "text/markdown"}
 # SPDX（PEP 639）；完整文本随包分发见 license-files
 license = "GPL-3.0-only"
@@ -20,6 +20,7 @@ requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Natural Language :: English",
     "Natural Language :: Chinese (Simplified)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.11",

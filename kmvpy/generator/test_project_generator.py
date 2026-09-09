@@ -115,7 +115,7 @@ def test_create_project_generates_expected_layout(tmp_path: Path) -> None:
 
     pyproject_content = (
         project_root / f"{inner}/pyproject.toml").read_text(encoding="utf-8")
-    assert 'kmvpy>=0.2.1' in pyproject_content
+    assert 'kmvpy>=0.2.3' in pyproject_content
     assert '"pytest"' in pyproject_content
     assert '"aiomysql"' in pyproject_content
     assert '"asyncpg"' in pyproject_content
