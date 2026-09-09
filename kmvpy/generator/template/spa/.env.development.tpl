@@ -1,0 +1,3 @@
+# 开发 / 联调环境
+VITE_API_BASE_URL=__API_BASE_URL__
+VITE_AUTH_STORAGE_KEY=__SPA_PROJECT_NAME__:authorization

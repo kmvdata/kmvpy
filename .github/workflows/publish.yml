@@ -1,0 +1,81 @@
+name: Publish kmvpy to PyPI
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and validate distributions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install packaging tools
+        run: python -m pip install --upgrade build twine
+
+      - name: Verify release tag matches package version
+        shell: bash
+        run: |
+          package_version="$(python -c 'import kmvpy; print(kmvpy.__version__)')"
+          release_version="${GITHUB_REF_NAME#v}"
+          if [[ "$release_version" != "$package_version" ]]; then
+            echo "Release tag $GITHUB_REF_NAME does not match package version $package_version."
+            exit 1
+          fi
+
+      - name: Build wheel and source distribution
+        run: python -m build
+
+      - name: Validate package metadata and README
+        run: python -m twine check --strict dist/*
+
+      - name: Smoke-test the wheel without source-tree imports
+        shell: bash
+        run: |
+          python -m venv /tmp/kmvpy-wheel-test
+          /tmp/kmvpy-wheel-test/bin/python -m pip install --no-deps dist/*.whl
+          cd /tmp
+          /tmp/kmvpy-wheel-test/bin/python -c 'import kmvpy; print(kmvpy.__version__)'
+          /tmp/kmvpy-wheel-test/bin/python -c 'from importlib.resources import files; assert files("kmvpy.generator").joinpath("template", "README.md.tpl").is_file()'
+          /tmp/kmvpy-wheel-test/bin/python -c 'from importlib.metadata import distribution; scripts = {entry.name: entry.value for entry in distribution("kmvpy").entry_points if entry.group == "console_scripts"}; assert scripts == {"kmvpy": "kmvpy.generator.cli:main"}, scripts'
+
+      - name: Store distributions
+        uses: actions/upload-artifact@v5
+        with:
+          name: python-package-distributions
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/kmvpy/
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v6
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish distributions with Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1

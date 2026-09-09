@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320" role="img" aria-labelledby="title desc">
+  <title id="title">KMVPy header wordmark</title>
+  <desc id="desc">The KMVPy wordmark presented with blue, green, white, and orange gradients.</desc>
+  <defs>
+    <linearGradient id="header-bg" x1="0" y1="0" x2="640" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#075985"/>
+      <stop offset="0.48" stop-color="#0d9488"/>
+      <stop offset="1" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="word-fill" x1="58" y1="98" x2="382" y2="176" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.3" stop-color="#bae6fd"/>
+      <stop offset="0.58" stop-color="#86efac"/>
+      <stop offset="0.78" stop-color="#ecfeff"/>
+      <stop offset="1" stop-color="#ffcf70"/>
+    </linearGradient>
+    <linearGradient id="tagline-fill" x1="64" y1="184" x2="456" y2="184" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ecfeff"/>
+      <stop offset="0.58" stop-color="#d1fae5"/>
+      <stop offset="1" stop-color="#fff7ed"/>
+    </linearGradient>
+    <linearGradient id="bar-fill" x1="66" y1="237" x2="272" y2="237" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffcf70"/>
+      <stop offset="0.42" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <filter id="text-glow" x="-10%" y="-30%" width="120%" height="170%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#075985" flood-opacity="0.32"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="1.8" flood-color="#ffffff" flood-opacity="0.24"/>
+    </filter>
+    <style>
+      .wordmark {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 82px;
+        font-weight: 850;
+        letter-spacing: 0;
+      }
+
+      .tagline {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 23px;
+        font-weight: 540;
+        letter-spacing: 0;
+      }
+
+      .small-cap {
+        fill: #fff7ed;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 14px;
+        font-weight: 760;
+        letter-spacing: 0.14em;
+        opacity: 0.92;
+      }
+    </style>
+  </defs>
+
+  <rect width="640" height="320" fill="url(#header-bg)"/>
+  <path d="M0 0h640v86C522 126 452 78 348 124 232 176 148 132 0 190z" fill="#ffffff" opacity="0.12"/>
+  <path d="M640 320H0v-74c112-36 210 14 318-34 126-56 218 2 322-52z" fill="#ffffff" opacity="0.14"/>
+
+  <g transform="translate(60 84)" filter="url(#text-glow)">
+    <text class="wordmark" x="0" y="76" fill="url(#word-fill)" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round" paint-order="stroke fill">kmvpy</text>
+    <text class="tagline" x="4" y="118" fill="url(#tagline-fill)">Core Python services, ordered to grow.</text>
+    <rect x="6" y="150" width="206" height="6" rx="3" fill="url(#bar-fill)"/>
+    <text class="small-cap" x="5" y="190">FASTAPI / CONFIG / ORM / SCHEDULE / JWT / GENERATOR</text>
+  </g>
+</svg>
