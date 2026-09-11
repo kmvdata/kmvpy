@@ -9,8 +9,8 @@ services:
     cpus: 0.8
     mem_limit: 1536m
     environment:
-      POSTGRES_USER: kmvuser
-      POSTGRES_PASSWORD: www.kmvdata.com
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: 3PVtuInMCcYwOa9Xye7akWQr0RTfTFp3
       POSTGRES_DB: __PROJECT_NAME__
       TZ: Asia/Shanghai
     volumes:
@@ -19,7 +19,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U kmvuser -d __PROJECT_NAME__" ]
+      test: [ "CMD-SHELL", "pg_isready -U dbuser -d __PROJECT_NAME__" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
     mem_limit: 1024m
     command:
       - redis-server
-      - --requirepass www.kmvdata.com
+      - --requirepass cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
       - --maxmemory 800mb
       - --maxmemory-policy allkeys-lru
       - --appendonly yes

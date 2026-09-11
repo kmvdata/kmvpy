@@ -157,7 +157,7 @@ export default {
     q2: "What Python version does it require?",
     a2: "Python >= 3.11. Generated projects are organized around modern typing, async I/O, and Pydantic v2.",
     q3: "What is the current version and maturity?",
-    a3: "The current version is 0.2.3 and the Development Status is Beta. It fits internal foundations, pilot services, and teams ready to provide fast feedback.",
+    a3: "The current version is 0.2.1 and the Development Status is Beta. It fits internal foundations, pilot services, and teams ready to provide fast feedback.",
     q4: "Is MySQL required?",
     a4: "No. MySQL is optional. Projects can use PostgreSQL, SQLite, or another configured storage path as needed.",
   },

@@ -144,7 +144,7 @@ export default {
     q2: "Python 版本要求是什么？",
     a2: "Python >= 3.11。生成项目也会默认围绕现代类型标注、async I/O 与 Pydantic v2 组织代码。",
     q3: "当前版本和成熟度如何？",
-    a3: "当前版本为 0.2.3，Development Status 是 Beta。它适合内部工程底座、试点项目和愿意快速反馈的团队。",
+    a3: "当前版本为 0.2.1，Development Status 是 Beta。它适合内部工程底座、试点项目和愿意快速反馈的团队。",
     q4: "MySQL 是必须的吗？",
     a4: "不是。MySQL 是可选依赖；项目也可以按需要使用 PostgreSQL、SQLite 或其他可接入的存储配置。",
   },

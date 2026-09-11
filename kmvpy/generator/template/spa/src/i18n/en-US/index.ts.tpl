@@ -147,7 +147,7 @@ export default {
       },
       version: {
         label: "Displayed version",
-        value: "0.2.3",
+        value: "0.2.1",
         detail: "Pre-Alpha reference project",
       },
       jwt: {

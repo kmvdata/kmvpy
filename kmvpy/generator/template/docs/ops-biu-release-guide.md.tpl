@@ -74,9 +74,9 @@ sed -n '1,140p' __PY_PROJECT_NAME__/app/etc/release/config.yaml
 | --- | --- |
 | `--update-config` | 用本地 release/config.yaml 覆盖远程 `py/config.yaml` |
 | `--rotate-jwt-keys` | 安装 wheel 后、启动前轮换 JWT 密钥（已登录用户会掉线） |
-| `--no-deps` | 不随 wheel 装依赖（当前 deploy.sh 本就固定 `--no-deps`，此参数主要为表达意图） |
+| `--no-deps` | 不随 wheel 装依赖（当前 deploy.sh 本就固定 `--no-deps`，此参数主要为表达意图）；kmvpy 默认仍会强制升级到最新版，除非远程设 `KMVPY_SKIP_UPGRADE=1` |
 
-远程 `py/deploy.sh` 会自动：选最新 wheel → 安装 → 停旧进程 → nohup 启动（pid 写入 `py/__PROJECT_NAME__.pid`，日志追加 `py/nohup.out`）。
+远程 `py/deploy.sh` 会自动：选最新 wheel → 安装 → **默认强制安装最新 kmvpy**（`pip install -U --force-reinstall kmvpy`，`KMVPY_SKIP_UPGRADE=1` 可跳过）→ 停旧进程 → nohup 启动（pid 写入 `py/__PROJECT_NAME__.pid`，日志追加 `py/nohup.out`）。
 
 ## 5. 回滚
 

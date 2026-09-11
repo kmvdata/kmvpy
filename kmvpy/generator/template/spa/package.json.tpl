@@ -1,6 +1,6 @@
 {
   "name": "__SPA_PROJECT_NAME__",
-  "version": "0.2.3",
+  "version": "0.2.1",
   "description": "Quasar SPA for __PROJECT_NAME__",
   "productName": "__SPA_PROJECT_NAME__",
   "author": "kmvpy generator",

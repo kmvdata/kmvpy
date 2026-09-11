@@ -145,7 +145,7 @@ export default {
       },
       version: {
         label: "展示版本",
-        value: "0.2.3",
+        value: "0.2.1",
         detail: "Pre-Alpha 参考工程",
       },
       jwt: {

@@ -10,7 +10,7 @@ This repository is a KMVPy-generated reference project that has been further ext
 
 - Backend framework: FastAPI
 - Python version: `>= 3.11`
-- KMVPy version shown on the homepage: `0.2.3`
+- KMVPy version shown on the homepage: `0.2.1`
 - Default JWT algorithm: `RS256`
 - Maturity: Pre-Alpha, suitable for internal foundations, pilot services, and teams ready to provide fast feedback
 - MySQL: optional dependency; PostgreSQL, SQLite, or other storage backends can be wired in as needed
@@ -96,7 +96,7 @@ The generated project includes a Python backend, SPA, editor config, deployment 
 The backend project lives in `__PY_PROJECT_NAME__/`. Its `pyproject.toml` depends on the KMVPy release published on PyPI:
 
 ```toml
-kmvpy>=0.2.3
+kmvpy>=0.2.1
 ```
 
 If your environment does not have this local path, install an available KMVPy package or adjust the dependency source first.
@@ -330,7 +330,7 @@ Python `>= 3.11`. Generated projects are organized around modern typing, async I
 
 ### How mature is it?
 
-The homepage currently shows version `0.2.3`, and the Development Status is Beta. It fits internal foundations, pilot services, and teams ready to provide fast feedback.
+The homepage currently shows version `0.2.1`, and the Development Status is Beta. It fits internal foundations, pilot services, and teams ready to provide fast feedback.
 
 ### Is MySQL required?
 
