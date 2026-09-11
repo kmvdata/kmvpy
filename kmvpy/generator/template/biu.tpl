@@ -27,6 +27,8 @@ BIU_DEPLOY_CONDA_ENV='kmvpy'
 # -----------------------------------------------------------------------------
 BIU_API_HOST=""
 BIU_SPA_HOST=""
+# Multipart 请求还包含边界和头部，网关需比业务文件上限多预留少量空间。
+BIU_API_CLIENT_MAX_BODY_SIZE="51m"
 
 # =============================================================================
 # 服务器部署配置（biu deploy / biu nginx）
@@ -464,6 +466,19 @@ write_api_nginx_conf() {
   content="${content//__API_SSL_DIRECTIVES__/${ssl_directives}}"
   content="${content//__API_HTTP_REDIRECT_SERVER__/${redirect_server}}"
   content="${content//__CORS_SPA_ORIGIN_LINE__/${cors_origin_line}}"
+  if [[ "${content}" != *"client_max_body_size"* ]]; then
+    content="$(printf '%s\n' "${content}" | awk -v body_size="${BIU_API_CLIENT_MAX_BODY_SIZE}" '
+      BEGIN { inserted = 0 }
+      {
+        print
+        if (!inserted && $0 ~ /^[[:space:]]*server_name[[:space:]]+/) {
+          print ""
+          print "    client_max_body_size " body_size ";"
+          inserted = 1
+        }
+      }
+    ')"
+  fi
   printf '%s\n' "${content}" >"${output_file}"
 }
 
@@ -731,7 +746,10 @@ run_py_deploy() {
   fi
   lc_quoted="$(printf '%q' "$lc_cmd")"
   if ! ssh "${SSH_PUSH_OPTS[@]}" "${DEPLOY_SSH}" "bash -lc ${lc_quoted}"; then
-    hint_deploy_fix "ssh 远程重新部署（py/deploy.sh）失败。当前目标: ${BIU_DEPLOY}"
+    printf '\n\033[1;31m[biu]\033[0m ssh 远程重新部署（py/deploy.sh）失败。当前目标: %s\n' "${BIU_DEPLOY}" >&2
+    printf '\033[1;33m[biu]\033[0m 此前 scp 上传与 ssh 连接均已成功，通常是远端脚本/环境问题，而不是部署地址问题。\n' >&2
+    printf '\033[1;33m[biu]\033[0m 若错误包含 EnvironmentNameNotFound，说明远端缺少 conda 环境 %s，请先创建: biu conda create 3.11（或手动: conda create -n %s python=3.11），再重新执行部署。\n' "${conda_env_for_remote}" "${conda_env_for_remote}" >&2
+    printf '\033[1;33m[biu]\033[0m 或改用已存在的环境: CONDA_ENV=<真实环境名> biu deploy py\n' >&2
     exit 1
   fi
   log "远程重新部署已结束"
