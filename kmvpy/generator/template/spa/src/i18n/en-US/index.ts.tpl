@@ -160,7 +160,7 @@ export default {
       foundation: {
         title: "What KMVPy solves",
         body:
-          "It does not implement your business system. It moves a backend project from an empty directory to a runnable, configurable, testable, deployable foundation.",
+          "It does not implement your business system. It moves a backend project from an empty directory to a runnable, configurable, maintainable, deployable foundation.",
         items: {
           app: "Unified ASGI entry, lifespan, route aggregation, exceptions, logging, and i18n.",
           config: "YAML configuration is loaded into validated Pydantic config models.",
@@ -170,7 +170,7 @@ export default {
       structure: {
         title: "Generated structure",
         body:
-          "Generated projects include a Python backend, SPA, editor settings, deployment templates, and smoke-test folders.",
+          "Generated projects include a Python backend, SPA, editor settings, and deployment templates.",
         items: {
           backend: "__PY_PROJECT_NAME__ contains the FastAPI entry, config, routes, ORM, storage, and schedules.",
           frontend: "__SPA_PROJECT_NAME__ uses Quasar, Vue 3, TypeScript, and Vite.",
@@ -185,16 +185,6 @@ export default {
           jwt: "JWT uses RS256 by default and identifies the active key with kid.",
           redis: "User and admin sessions can use separate role configs, Redis sessions, and renewal.",
           cors: "Key paths, HttpOnly cookies, and CORS restrictions define the login boundary.",
-        },
-      },
-      quality: {
-        title: "Testing baseline",
-        body:
-          "Generated projects include app/st_test smoke tests for lightweight API verification.",
-        items: {
-          pytest: "pytest runs the tests.",
-          yaml: "StBasePyTest.data_driven turns same-name YAML cases into parameterized tests.",
-          expect: "StExpect checks only necessary fields, which keeps smoke tests resilient.",
         },
       },
     },
@@ -213,7 +203,7 @@ export default {
         enterSisyphusPy: "cd __PY_PROJECT_NAME__",
         createVenv: "python -m venv .venv",
         activateVenv: "source .venv/bin/activate",
-        installRepo: 'pip install -e ".[test,sqlite]"',
+        installRepo: 'pip install -e ".[postgresql]"',
         runRepo: "python app/run.py",
         enterSpa: "cd __SPA_PROJECT_NAME__",
         bunInstall: "bun install",
@@ -256,17 +246,6 @@ export default {
           algorithm: "The default algorithm is RS256.",
           paths: "User and admin auth can use separate issuers, audiences, session durations, and Redis databases.",
           rotation: "Before release, run kmvpy rotate-jwt-keys to rotate keys.",
-        },
-      },
-      testing: {
-        title: "Smoke tests",
-        caption: "pytest with YAML-driven cases",
-        body:
-          "Generated projects include app/st_test smoke tests that call the FastAPI app directly through TestClient.",
-        items: {
-          pytest: "pytest discovers and runs cases.",
-          client: "TestClient avoids manually starting an external service.",
-          assertions: "StExpect focuses on required fields to reduce brittle tests.",
         },
       },
     },

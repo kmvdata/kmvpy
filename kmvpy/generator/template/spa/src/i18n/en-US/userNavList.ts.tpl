@@ -22,6 +22,4 @@ export default {
   helpStructureSub: "Backend, frontend, config, and deployment folders",
   helpSecurity: "Configuration security",
   helpSecuritySub: "JWT, Redis sessions, and key rotation",
-  helpTesting: "Testing conventions",
-  helpTestingSub: "pytest, YAML cases, and smoke tests",
 };

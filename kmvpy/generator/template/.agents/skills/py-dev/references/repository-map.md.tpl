@@ -9,7 +9,6 @@
 - 主 Python 包位于 `__PY_PROJECT_NAME__/__PROJECT_NAME__`。
 - 应用入口位于 `__PY_PROJECT_NAME__/app/run.py`；包内启动实现位于 `__PY_PROJECT_NAME__/__PROJECT_NAME__/core/app/run.py`。
 - 环境配置位于 `__PY_PROJECT_NAME__/app/etc/develop` 与 `__PY_PROJECT_NAME__/app/etc/release`。
-- 冒烟测试位于 `__PY_PROJECT_NAME__/app/st_test`。
 - 对应 SPA 位于 `__SPA_PROJECT_NAME__/src`。
 
 ## 目录职责

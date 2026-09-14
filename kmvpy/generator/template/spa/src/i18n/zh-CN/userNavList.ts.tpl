@@ -22,6 +22,4 @@ export default {
   helpStructureSub: "后端、前端、配置与部署目录",
   helpSecurity: "配置安全",
   helpSecuritySub: "JWT、Redis 会话与密钥轮换",
-  helpTesting: "测试约定",
-  helpTestingSub: "pytest、YAML 用例与冒烟测试",
 };

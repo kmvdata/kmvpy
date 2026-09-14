@@ -6,11 +6,11 @@ from typing import Any, cast
 from kmvpy.common.exception.kmv_exception import KmvException
 from kmvpy.common.kmv import kosmos
 from kmvpy.common.tool.logger import logger
-from kmvpy.core.main.service.auth_session_service import AuthSessionService
 from kmvpy.core.main.service.jwt_service import JwtService, JwtUserInfo
 from sqlalchemy.exc import IntegrityError
 
 from __PROJECT_NAME__.common.dependencies.client import ClientRequestInfo
+from __PROJECT_NAME__.common.auth_session import AuthSessionService
 from __PROJECT_NAME__.common.infra.storage.default_storage import DefaultStorage
 from __PROJECT_NAME__.common.dto.user.user_op import (
     EmailAuthRes,

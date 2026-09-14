@@ -2,7 +2,7 @@
 
 > Chinese version: [README.md](README.md)
 
-KMVPy is a FastAPI backend foundation and project scaffold. It is not meant to implement your business system for you. Its goal is to move a backend project from an empty directory to a runnable, configurable, testable, and deployable service foundation.
+KMVPy is a FastAPI backend foundation and project scaffold. It is not meant to implement your business system for you. Its goal is to move a backend project from an empty directory to a runnable, configurable, maintainable, and deployable service foundation.
 
 This repository is a KMVPy-generated reference project that has been further extended: the backend lives in `__PY_PROJECT_NAME__/`, and the landing site plus example SPA live in `__SPA_PROJECT_NAME__/`. The business positioning, capability map, and runtime examples shown on the homepage are synchronized into this document.
 
@@ -27,7 +27,6 @@ When starting a new FastAPI project, teams often rebuild the same foundation rep
 - Asymmetric JWT, kid, key file paths, Redis sessions, automatic renewal, and key rotation
 - APScheduler cron jobs, startup jobs, and unified lifecycle management
 - A mixed runtime path for REST APIs and Socket.IO realtime APIs
-- pytest, YAML cases, and `StExpect` minimal field assertions
 - Generated Python subproject, SPA subproject, editor config, Nginx templates, and deployment config
 
 KMVPy consolidates these conventions into a foundation library, runtime path, and generator so teams can start writing their own routers, ORM models, schedules, and deployment details sooner.
@@ -37,7 +36,7 @@ KMVPy consolidates these conventions into a foundation library, runtime path, an
 - Engineering teams that need to bootstrap a microservice foundation quickly
 - Backend services that need ordinary HTTP APIs and Socket.IO realtime notifications together
 - Teams that want consistent response formats, error codes, config structure, and logging across services
-- Projects that need Python backend, SPA, test templates, Nginx, and deployment config generated together
+- Projects that need Python backend, SPA, Nginx, and deployment config generated together
 - Backend teams that want new projects to start with Cursor / VS Code debugger config, workspace structure, and runnable examples
 
 KMVPy is not a complete business system to buy or run directly. Business models, workflows, and product rules are still implemented by your team.
@@ -87,7 +86,7 @@ python app/run.py
 kmvpy rotate-jwt-keys app/etc/release/config.yaml
 ```
 
-The generated project includes a Python backend, SPA, editor config, deployment templates, and smoke-test directory. Before release, JWT keys can be rotated while previous public keys remain available for a smooth client transition.
+The generated project includes a Python backend, SPA, editor config, and deployment templates. Before release, JWT keys can be rotated while previous public keys remain available for a smooth client transition.
 
 ## Running This Repository
 
@@ -107,7 +106,7 @@ Run locally:
 cd __PY_PROJECT_NAME__
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[test,sqlite]"
+pip install -e ".[postgresql]"
 python app/run.py
 ```
 
@@ -142,7 +141,6 @@ A typical KMVPy-generated project contains:
 demo_project/
 |-- __PY_PROJECT_NAME__/
 |   |-- app/etc/develop/config.yaml
-|   |-- app/st_test/
 |   `-- __PROJECT_NAME__/core/main/
 `-- __SPA_PROJECT_NAME__/
 ```
@@ -241,45 +239,6 @@ auth_config:
       active_kid: k-admin-active
 ```
 
-## Smoke Tests
-
-KMVPy-generated projects include an `app/st_test/` smoke-test directory by default. The test flow is:
-
-- pytest executes the tests
-- `StBasePyTest.data_driven` turns same-name YAML cases into parameterized tests
-- `TestClient` calls the FastAPI app directly, so the service does not need to be started manually
-- `StExpect` validates only the required fields, which fits API smoke tests well
-
-Run all smoke tests in a generated project:
-
-```bash
-cd __PY_PROJECT_NAME__
-source .venv/bin/activate
-pip install -e ".[test,sqlite]"
-pytest app/st_test
-```
-
-> Note: this reference repository does not include the `app/st_test/` directory yet; add cases following the KMVPy generator template when needed.
-
-YAML case example:
-
-```yaml
-test_send_email_verify_code:
-  comment: user email verification smoke test
-  case_list:
-    - comment: send registration verification code
-      steps:
-        - step_kid: STEP_SEND_EMAIL_VERIFY_CODE
-          action: POST /api/user/email/verify-code
-          request:
-            email: smoke@example.com
-            scene: register
-      expected:
-        code: 0
-        data:
-          sent: false
-```
-
 ## Scheduled Jobs
 
 This project keeps the KMVPy schedule registration entry:
@@ -312,9 +271,8 @@ A generated project is usually extended through this path:
 1. Create Project
 2. Configure YAML
 3. Add Routers / ORM / Schedules
-4. Run Smoke Tests
-5. Deploy
-6. Rotate JWT Keys
+4. Deploy
+5. Rotate JWT Keys
 
 In this repository, backend business code generally expands along `router -> service -> hub -> infra`; frontend pages generally expand along `route -> page -> network/api -> network/dto`.
 

@@ -2,7 +2,7 @@
 
 > English version: [README.en.md](README.en.md)
 
-KMVPy 是面向 FastAPI 后端项目的基础库与工程脚手架。它的目标不是替你实现业务系统，而是把一个后端项目从空目录推进到可运行、可配置、可测试、可部署的工程底座。
+KMVPy 是面向 FastAPI 后端项目的基础库与工程脚手架。它的目标不是替你实现业务系统，而是把一个后端项目从空目录推进到可运行、可配置、可维护、可部署的工程底座。
 
 当前仓库是一个由 KMVPy 生成并继续扩展的参考工程：后端位于 `__PY_PROJECT_NAME__/`，前端官网与示例 SPA 位于 `__SPA_PROJECT_NAME__/`。首页展示的 KMVPy 业务定位、能力范围和运行示例，已同步整理到本文档中。
 
@@ -27,7 +27,6 @@ KMVPy 是面向 FastAPI 后端项目的基础库与工程脚手架。它的目�
 - 非对称 JWT、kid、公私钥路径、Redis 会话、自动续签和密钥轮换
 - APScheduler cron 任务、启动型任务和统一生命周期管理
 - REST API 与 Socket.IO 实时 API 的混合运行路径
-- pytest、YAML 用例和 `StExpect` 必要字段断言
 - Python 子项目、SPA 子项目、编辑器配置、Nginx 模板与部署配置生成
 
 KMVPy 把这些约定收敛成基础库、运行路径和生成器，让团队可以更快开始写自己的业务路由、ORM 模型、schedule 任务和部署细节。
@@ -37,7 +36,7 @@ KMVPy 把这些约定收敛成基础库、运行路径和生成器，让团队�
 - 需要快速搭建微服务底座的工程团队
 - 同时需要普通 HTTP API 和 Socket.IO 实时通知的后端服务
 - 希望在多个服务之间复用响应格式、错误码、配置结构和日志约定的团队
-- 需要一键落地 Python 后端、SPA、测试模板、Nginx 和部署配置的项目
+- 需要一键落地 Python 后端、SPA、Nginx 和部署配置的项目
 - 希望新项目天然带 Cursor / VS Code 调试配置、工作区结构和可运行示例的后端开发团队
 
 KMVPy 不适合直接当作完整业务系统购买或使用。业务模型、业务流程和产品规则仍然由团队自己实现。
@@ -87,7 +86,7 @@ python app/run.py
 kmvpy rotate-jwt-keys app/etc/release/config.yaml
 ```
 
-生成后的工程默认包含 Python 后端、SPA、编辑器配置、部署模板和冒烟测试目录。发布前可以轮换 JWT 密钥，并保留旧公钥完成客户端平滑过渡。
+生成后的工程默认包含 Python 后端、SPA、编辑器配置和部署模板。发布前可以轮换 JWT 密钥，并保留旧公钥完成客户端平滑过渡。
 
 ## 当前仓库如何运行
 
@@ -107,7 +106,7 @@ kmvpy>=0.2.1
 cd __PY_PROJECT_NAME__
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[test,sqlite]"
+pip install -e ".[postgresql]"
 python app/run.py
 ```
 
@@ -142,7 +141,6 @@ bun run build
 demo_project/
 ├─ __PY_PROJECT_NAME__/
 │  ├─ app/etc/develop/config.yaml
-│  ├─ app/st_test/
 │  └─ __PROJECT_NAME__/core/main/
 └─ __SPA_PROJECT_NAME__/
 ```
@@ -241,45 +239,6 @@ auth_config:
       active_kid: k-admin-active
 ```
 
-## 冒烟测试
-
-KMVPy 生成工程默认内置 `app/st_test/` 冒烟测试目录。测试方式是：
-
-- pytest 负责执行
-- `StBasePyTest.data_driven` 把同名 YAML 用例转成参数化测试
-- `TestClient` 直接调用 FastAPI 应用，不需要额外手工启动服务
-- `StExpect` 只校验必要字段，适合接口冒烟测试
-
-在生成工程中运行全部冒烟测试：
-
-```bash
-cd __PY_PROJECT_NAME__
-source .venv/bin/activate
-pip install -e ".[test,sqlite]"
-pytest app/st_test
-```
-
-> 说明：当前参考仓库尚未包含 `app/st_test/` 用例目录，可按 KMVPy 生成模板补充。
-
-YAML 用例示例：
-
-```yaml
-test_send_email_verify_code:
-  comment: 用户邮箱验证码接口冒烟测试
-  case_list:
-    - comment: 发送注册验证码
-      steps:
-        - step_kid: STEP_SEND_EMAIL_VERIFY_CODE
-          action: POST /api/user/email/verify-code
-          request:
-            email: smoke@example.com
-            scene: register
-      expected:
-        code: 0
-        data:
-          sent: false
-```
-
 ## 定时任务
 
 当前工程保留 KMVPy schedule 的统一注册入口：
@@ -312,9 +271,8 @@ test_send_email_verify_code:
 1. Create Project
 2. Configure YAML
 3. Add Routers / ORM / Schedules
-4. Run Smoke Tests
-5. Deploy
-6. Rotate JWT Keys
+4. Deploy
+5. Rotate JWT Keys
 
 当前仓库中，后端业务代码主要沿着 `router -> service -> hub -> infra` 的方向扩展；前端页面主要沿着 `route -> page -> network/api -> network/dto` 的方向扩展。
 

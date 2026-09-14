@@ -41,8 +41,8 @@ auth_config:
       host: localhost
       port: 6379
       db: 1
-      username: kmvuser
-      password: www.kmvdata.com
+      username: null
+      password: cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
       decode_responses: true
   admin:
     jwt:
@@ -63,8 +63,8 @@ auth_config:
       host: localhost
       port: 6379
       db: 10
-      username: kmvuser
-      password: www.kmvdata.com
+      username: null
+      password: cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
       decode_responses: true
 default_admin:
   username: admin
@@ -84,6 +84,6 @@ default_storage:
     host: localhost
     port: 6379
     db: 0
-    username: kmvuser
-    password: www.kmvdata.com
+    username: null
+    password: cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
     decode_responses: true

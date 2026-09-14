@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, Request
 
 from kmvpy.common.response import ApiResponse
 from kmvpy.common.tool.logger import api_log
-from kmvpy.core.main.service.auth_session_service import AuthSessionService
 from kmvpy.core.main.service.jwt_service import JwtService
 from kmvpy.core.main.service.jwt_service import JwtUserInfo
 
+from __PROJECT_NAME__.common.auth_session import AuthSessionService
 from __PROJECT_NAME__.common.dependencies.admin_op_log import admin_op_log
 from __PROJECT_NAME__.common.dependencies.auth import auth_admin
 from __PROJECT_NAME__.common.dependencies.client import ClientRequestInfo, client_request_info

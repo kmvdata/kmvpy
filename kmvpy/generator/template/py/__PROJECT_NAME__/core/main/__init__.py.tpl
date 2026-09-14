@@ -6,6 +6,7 @@ from kmvpy.common.kmv import kosmos
 
 from kmvpy.core.main import get_config_path, init_asgi_app
 
+from __PROJECT_NAME__.common.auth_session import install_kmvpy_auth_session_service
 from __PROJECT_NAME__.common.conf import AppConfig
 from __PROJECT_NAME__.common.infra.orm import init_default_admin_if_needed, init_tables
 from __PROJECT_NAME__.core.main.schedule import (
@@ -42,6 +43,7 @@ def gen_asgi_app(config_path: Annotated[Optional[str], "工程配置对象或配
     config = AppConfig.load_config(resolved_config_path)
     has_database = config.get_default_storage_database_config() is not None
     UserSocketService.require_redis_for_production(config)
+    install_kmvpy_auth_session_service()
     app = init_asgi_app(config, routers)
     _align_socketio_engineio_path_with_mount()
     UserSocketService.configure_distributed_socket_manager(config)

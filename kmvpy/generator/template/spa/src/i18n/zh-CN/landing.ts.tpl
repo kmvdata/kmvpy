@@ -10,7 +10,7 @@ export default {
     badge: "FastAPI 服务端基础库与工程脚手架",
     title: "KMVPy",
     subtitle:
-      "FastAPI 服务端基础库与工程脚手架，把后端项目从空目录推进到可运行、可测试、可部署。",
+      "FastAPI 服务端基础库与工程脚手架，把后端项目从空目录推进到可运行、可配置、可部署。",
     ctaStart: "快速开始",
     ctaGithub: "查看源码",
     factsLabel: "KMVPy 项目状态",
@@ -26,7 +26,7 @@ export default {
   quickstart: {
     section: "Quick Start",
     title: "从安装到运行的最短路径",
-    desc: "KMVPy 面向后端开发者和工程团队，目标是先生成一个能跑、能配、能测、能部署的服务端工程。",
+    desc: "KMVPy 面向后端开发者和工程团队，目标是先生成一个能跑、能配、能部署的服务端工程。",
     stepInstall: "安装发布包；在源码目录也可以执行 pip install .。",
     stepCreate: "生成带 Python 后端、SPA、编辑器配置、部署模板的项目骨架。",
     stepRun: "读取 YAML 配置，启动基于 FastAPI 与 Uvicorn 的 ASGI 服务。",
@@ -35,7 +35,7 @@ export default {
   capabilities: {
     section: "Capabilities",
     title: "新 FastAPI 项目反复要搭的基础设施，先标准化",
-    desc: "KMVPy 不是普通模板项目，而是一组基础库、运行约定和工程生成器，覆盖服务端项目的入口、配置、存储、安全、实时通信、定时任务与测试。",
+    desc: "KMVPy 不是普通模板项目，而是一组基础库、运行约定和工程生成器，覆盖服务端项目的入口、配置、存储、安全、实时通信与定时任务。",
     asgiTitle: "ASGI 应用入口",
     asgiBody:
       "init_asgi_app、lifespan、路由聚合、全局异常、日志与 i18n 统一接入。",
@@ -54,8 +54,6 @@ export default {
     scheduleBody: "APScheduler cron 任务、启动型任务与统一生命周期管理。",
     socketTitle: "Socket.IO",
     socketBody: "与 FastAPI 应用绑定，支撑 REST 与实时 API 混合场景。",
-    smokeTitle: "冒烟测试",
-    smokeBody: "pytest、YAML 用例与 StExpect 必要条件断言，减少重复测试代码。",
     generatorTitle: "工程生成器",
     generatorBody:
       "Python 子项目、SPA 子项目、VS Code/Cursor 配置、Nginx 模板与部署配置一起生成。",
@@ -67,19 +65,17 @@ export default {
     create: "Create Project",
     configure: "Configure YAML",
     extend: "Add Routers / ORM / Schedules",
-    test: "Run Smoke Tests",
     deploy: "Deploy",
     rotate: "Rotate JWT Keys",
   },
   examples: {
     section: "Code Examples",
     title: "开发者能直接识别的接口和配置",
-    desc: "命令、ASGI 入口、JWT 配置和 YAML 冒烟测试保持显式，让团队可以快速判断 KMVPy 是否适合自己的服务端底座。",
+    desc: "命令、ASGI 入口和 JWT 配置保持显式，让团队可以快速判断 KMVPy 是否适合自己的服务端底座。",
     tabsLabel: "代码示例标签",
     cliLabel: "CLI 创建工程",
     asgiLabel: "init_asgi_app",
     jwtLabel: "JWT YAML",
-    smokeLabel: "YAML 冒烟测试",
     cliSourceComment: "或在源码目录执行",
   },
   security: {
@@ -107,7 +103,7 @@ export default {
       "希望在多个微服务之间复用响应格式、错误码、配置结构和日志约定。",
     scaffoldTitle: "一键生成前后端目录",
     scaffoldBody:
-      "需要 Python 后端、SPA、测试模板、Nginx 和部署配置一起落地的团队。",
+      "需要 Python 后端、SPA、Nginx 和部署配置一起落地的团队。",
     ideTitle: "Cursor / VS Code Python 后端开发",
     ideBody: "希望新项目天然带调试配置、工作区结构和可运行示例。",
   },

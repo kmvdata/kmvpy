@@ -225,14 +225,6 @@ const userNavSections: UserNavSection[] = [
         subtitleKey: "helpSecuritySub",
         query: { topic: "security" },
       },
-      {
-        id: "helpTesting",
-        toUri: "/app/help/help",
-        icon: "science",
-        titleKey: "helpTesting",
-        subtitleKey: "helpTestingSub",
-        query: { topic: "testing" },
-      },
     ],
   },
 ];

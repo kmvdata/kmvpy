@@ -1,6 +1,6 @@
 ---
 name: py-dev
-description: Use for designing, implementing, reviewing, or explaining any __PY_PROJECT_NAME__ backend change under __PY_PROJECT_NAME__/__PROJECT_NAME__ — including FastAPI/kmvpy HTTP APIs, DTO/router/service/hub boundaries, AppConfig, business exceptions, user/admin Socket.IO behavior, ORM table models, DefaultStorage, database sessions, schedule tasks, smoke tests, and SPA API contract synchronization. This is the single authoritative skill for all Python backend work.
+description: Use for designing, implementing, reviewing, or explaining any __PY_PROJECT_NAME__ backend change under __PY_PROJECT_NAME__/__PROJECT_NAME__ — including FastAPI/kmvpy HTTP APIs, DTO/router/service/hub boundaries, AppConfig, business exceptions, user/admin Socket.IO behavior, ORM table models, DefaultStorage, database sessions, schedule tasks, and SPA API contract synchronization. This is the single authoritative skill for all Python backend work.
 ---
 
 # __PY_PROJECT_NAME__ 后端开发
@@ -32,7 +32,7 @@ description: Use for designing, implementing, reviewing, or explaining any __PY_
 
 - 使用 Python >= 3.11、FastAPI + kmvpy、Pydantic v2、SQLAlchemy 2.x 异步 ORM。
 - 开发使用 SQLite，生产主要使用 MySQL；新增数据层代码同时关注 PostgreSQL 兼容性。
-- 主包位于 `__PY_PROJECT_NAME__/__PROJECT_NAME__`，冒烟测试位于 `__PY_PROJECT_NAME__/app/st_test`。
+- 主包位于 `__PY_PROJECT_NAME__/__PROJECT_NAME__`。
 - 后端契约影响 `__SPA_PROJECT_NAME__` 时同步修改；实际编辑 SPA 时同时使用 `spa-dev` Skill。
 
 ## 核心架构
@@ -91,7 +91,7 @@ Schedule ─────────────┴─> Service ─> Hub ─> In
 ## 条件式开发流程
 
 1. 明确入口域、业务主题、事务边界、错误语义和受影响契约。
-2. 读取所有匹配的 reference，并检查同主题现有代码、测试和调用方。
+2. 读取所有匹配的 reference，并检查同主题现有代码和直接调用方。
 3. 如需数据模型，先设计 ORM/约束并完成注册；如需错误或配置，同时定义稳定入口。
 4. 在 Hub 实现业务规则和数据访问；遵守 session 方法隔离。
 5. 在 Service 定义事务和固定调用顺序，捕获明确异常并组装 DTO。

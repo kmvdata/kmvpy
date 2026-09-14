@@ -1,11 +1,12 @@
 from enum import IntEnum
 from typing import Annotated, NoReturn
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request, Response, status
 
 from kmvpy.common.tool.logger import logger
-from kmvpy.core.main.service.auth_session_service import AuthRole, AuthSessionService
 from kmvpy.core.main.service.jwt_service import JwtService, JwtUserInfo
+
+from __PROJECT_NAME__.common.auth_session import AuthRole, AuthSessionService
 
 
 class UserType(IntEnum):
@@ -85,6 +86,7 @@ def _raise_authorization_invalid(auth_role: str) -> NoReturn:
 
 async def _auth_jwt(
     request: Request,
+    response: Response,
     auth_role: AuthRole,
     expected_user_type: UserType,
 ) -> JwtUserInfo:
@@ -108,15 +110,37 @@ async def _auth_jwt(
     if token_type.lower() != "bearer" or not token.strip():
         _raise_authorization_invalid(auth_role)
 
+    normalized_token = token.strip()
     try:
-        payload = JwtService.decode_token(token.strip(), auth_role=auth_role)
-        user_info = JwtService.payload_to_user_info(payload)
-        AuthSessionService.stage_renew_candidate(
+        payload = await AuthSessionService.authenticate_access_token(
             request,
             auth_role=auth_role,
-            token=token.strip(),
-            payload=payload,
+            token=normalized_token,
         )
+    except HTTPException:
+        try:
+            recovered = await AuthSessionService.recover_expired_access_token(
+                request,
+                response,
+                auth_role=auth_role,
+                token=normalized_token,
+            )
+            if recovered is None:
+                _raise_authorization_invalid(auth_role)
+            candidate = getattr(request.state, "auth_renew_candidate", None)
+            if not isinstance(candidate, dict):
+                _raise_authorization_invalid(auth_role)
+            payload = candidate["payload"]
+        except Exception as exc:
+            logger.warning(
+                "恢复过期登录信息失败，auth_role=%s",
+                auth_role,
+                exc_info=exc,
+            )
+            _raise_authorization_invalid(auth_role)
+
+    try:
+        user_info = JwtService.payload_to_user_info(payload)
         request.state.jwt_user_info = user_info
     except Exception as exc:
         logger.warning(
@@ -131,11 +155,27 @@ async def _auth_jwt(
     _raise_authorization_invalid(auth_role)
 
 
-async def auth_user(request: Annotated[Request, "JWT鉴权"]) -> JwtUserInfo:
+async def auth_user(
+    request: Annotated[Request, "JWT鉴权"],
+    response: Response,
+) -> JwtUserInfo:
     """路由层统一登录态依赖，负责从请求中解析当前普通用户信息。"""
-    return await _auth_jwt(request, auth_role="user", expected_user_type=UserType.USER)
+    return await _auth_jwt(
+        request,
+        response,
+        auth_role="user",
+        expected_user_type=UserType.USER,
+    )
 
 
-async def auth_admin(request: Annotated[Request, "JWT鉴权"]) -> JwtUserInfo:
+async def auth_admin(
+    request: Annotated[Request, "JWT鉴权"],
+    response: Response,
+) -> JwtUserInfo:
     """路由层统一登录态依赖，负责从请求中解析当前管理员信息。"""
-    return await _auth_jwt(request, auth_role="admin", expected_user_type=UserType.ADMIN)
+    return await _auth_jwt(
+        request,
+        response,
+        auth_role="admin",
+        expected_user_type=UserType.ADMIN,
+    )

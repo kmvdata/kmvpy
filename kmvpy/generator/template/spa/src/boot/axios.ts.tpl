@@ -297,12 +297,38 @@ const getStoredAuthorization = (storageKey = AUTH_STORAGE_KEY) => {
   return normalizeAuthorization(window.localStorage.getItem(storageKey));
 };
 
+const getAuthorizationExpiresAtStorageKey = (storageKey: string) => `${storageKey}:expires-at`;
+
+const getStoredAuthorizationExpiresAt = (storageKey = AUTH_STORAGE_KEY) => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  return window.localStorage.getItem(getAuthorizationExpiresAtStorageKey(storageKey))?.trim() || '';
+};
+
+const setStoredAuthorizationExpiresAt = (value: string, storageKey = AUTH_STORAGE_KEY) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const expiresAt = value.trim();
+  const expiresAtStorageKey = getAuthorizationExpiresAtStorageKey(storageKey);
+  if (!/^\d+$/.test(expiresAt)) {
+    window.localStorage.removeItem(expiresAtStorageKey);
+    return;
+  }
+
+  window.localStorage.setItem(expiresAtStorageKey, expiresAt);
+};
+
 const setStoredAuthorization = (value: string, storageKey = AUTH_STORAGE_KEY) => {
   if (typeof window === 'undefined') {
     return;
   }
 
   const authorization = normalizeAuthorization(value);
+  window.localStorage.removeItem(getAuthorizationExpiresAtStorageKey(storageKey));
   if (!authorization) {
     window.localStorage.removeItem(storageKey);
     return;
@@ -317,6 +343,7 @@ const clearStoredAuthorization = (storageKey = AUTH_STORAGE_KEY) => {
   }
 
   window.localStorage.removeItem(storageKey);
+  window.localStorage.removeItem(getAuthorizationExpiresAtStorageKey(storageKey));
 };
 
 interface ValidationErrorDetailItemLike {
@@ -490,12 +517,11 @@ export const installAuthTokenResponseInterceptor = (
 
     const tokenType =
       getResponseHeader(response, AUTH_RENEW_TOKEN_TYPE_HEADER) || 'Bearer';
+    const expiresAt = getResponseHeader(response, AUTH_RENEW_EXPIRES_AT_HEADER);
     const authorization = normalizeAuthorization(`${tokenType} ${token}`);
     setStoredAuthorization(authorization, options.authStorageKey);
-    options.onAuthorizationChanged?.(
-      authorization,
-      getResponseHeader(response, AUTH_RENEW_EXPIRES_AT_HEADER),
-    );
+    setStoredAuthorizationExpiresAt(expiresAt, options.authStorageKey);
+    options.onAuthorizationChanged?.(authorization, expiresAt);
     return response;
   });
 
@@ -547,5 +573,7 @@ export {
   AUTH_STORAGE_KEY,
   clearStoredAuthorization,
   getStoredAuthorization,
+  getStoredAuthorizationExpiresAt,
   setStoredAuthorization,
+  setStoredAuthorizationExpiresAt,
 };

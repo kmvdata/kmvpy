@@ -185,17 +185,6 @@ const sections = computed<HelpSection[]>(() => [
       t("helpCenter.sections.security.items.cors"),
     ],
   },
-  {
-    id: "testing",
-    icon: "task_alt",
-    title: t("helpCenter.sections.quality.title"),
-    body: t("helpCenter.sections.quality.body"),
-    items: [
-      t("helpCenter.sections.quality.items.pytest"),
-      t("helpCenter.sections.quality.items.yaml"),
-      t("helpCenter.sections.quality.items.expect"),
-    ],
-  },
 ]);
 
 const scrollToTopic = async (value: unknown) => {
@@ -277,17 +266,6 @@ const detailTopics = computed<DetailTopic[]>(() => [
       t("helpCenter.details.jwt.items.algorithm"),
       t("helpCenter.details.jwt.items.paths"),
       t("helpCenter.details.jwt.items.rotation"),
-    ],
-  },
-  {
-    icon: "science",
-    title: t("helpCenter.details.testing.title"),
-    caption: t("helpCenter.details.testing.caption"),
-    body: t("helpCenter.details.testing.body"),
-    items: [
-      t("helpCenter.details.testing.items.pytest"),
-      t("helpCenter.details.testing.items.client"),
-      t("helpCenter.details.testing.items.assertions"),
     ],
   },
 ]);

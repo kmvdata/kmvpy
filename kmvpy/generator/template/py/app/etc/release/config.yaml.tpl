@@ -39,14 +39,14 @@ auth_config:
       access_token_lifetime_hours: 0.25
     session:
       idle_timeout_hours: 24.0
-      absolute_timeout_hours: 720.0
+      absolute_timeout_hours: 24.0
       max_sessions_per_user: null
     redis:
       host: localhost
       port: 6379
       db: 1
-      username: kmvuser
-      password: www.kmvdata.com
+      username: null
+      password: cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
       decode_responses: true
   admin:
     jwt:
@@ -63,14 +63,14 @@ auth_config:
       access_token_lifetime_hours: 1.0
     session:
       idle_timeout_hours: 2.0
-      absolute_timeout_hours: 8.0
+      absolute_timeout_hours: 2.0
       max_sessions_per_user: 3
     redis:
       host: localhost
       port: 6379
       db: 10
-      username: kmvuser
-      password: www.kmvdata.com
+      username: null
+      password: cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
       decode_responses: true
 default_admin:
   username: admin
@@ -90,6 +90,6 @@ default_storage:
     host: localhost
     port: 6379
     db: 0
-    username: kmvuser
-    password: www.kmvdata.com
+    username: null
+    password: cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
     decode_responses: true

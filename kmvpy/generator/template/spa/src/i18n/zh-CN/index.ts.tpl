@@ -158,7 +158,7 @@ export default {
       foundation: {
         title: "KMVPy 解决什么问题",
         body:
-          "它不替你实现业务系统，而是把后端项目从空目录推进到可运行、可配置、可测试、可部署的工程底座。",
+          "它不替你实现业务系统，而是把后端项目从空目录推进到可运行、可配置、可维护、可部署的工程底座。",
         items: {
           app: "统一 ASGI 应用入口、lifespan、路由聚合、异常、日志和 i18n。",
           config: "把 YAML 配置加载到 Pydantic 配置模型，并完成校验。",
@@ -168,7 +168,7 @@ export default {
       structure: {
         title: "生成工程结构",
         body:
-          "生成项目默认包含 Python 后端、SPA、编辑器配置、部署模板和冒烟测试目录。",
+          "生成项目默认包含 Python 后端、SPA、编辑器配置和部署模板。",
         items: {
           backend: "__PY_PROJECT_NAME__ 保存 FastAPI 入口、配置、路由、ORM、存储与定时任务。",
           frontend: "__SPA_PROJECT_NAME__ 使用 Quasar、Vue 3、TypeScript 和 Vite 构建前端。",
@@ -183,16 +183,6 @@ export default {
           jwt: "JWT 默认使用 RS256，并通过 kid 标识当前密钥。",
           redis: "支持 user/admin 分角色会话配置、Redis 会话和自动续签。",
           cors: "密钥路径、HttpOnly Cookie 与 CORS 限制共同提供登录态边界。",
-        },
-      },
-      quality: {
-        title: "测试与质量基线",
-        body:
-          "生成工程内置 app/st_test 冒烟测试目录，适合用轻量用例快速验证接口。",
-        items: {
-          pytest: "pytest 负责执行测试。",
-          yaml: "StBasePyTest.data_driven 把同名 YAML 用例转成参数化测试。",
-          expect: "StExpect 只校验必要字段，适合接口冒烟测试。",
         },
       },
     },
@@ -210,7 +200,7 @@ export default {
         enterSisyphusPy: "cd __PY_PROJECT_NAME__",
         createVenv: "python -m venv .venv",
         activateVenv: "source .venv/bin/activate",
-        installRepo: 'pip install -e ".[test,sqlite]"',
+        installRepo: 'pip install -e ".[postgresql]"',
         runRepo: "python app/run.py",
         enterSpa: "cd __SPA_PROJECT_NAME__",
         bunInstall: "bun install",
@@ -252,17 +242,6 @@ export default {
           algorithm: "默认算法为 RS256。",
           paths: "user/admin 可配置独立 issuer、audience、会话时长和 Redis 库。",
           rotation: "发布前可执行 kmvpy rotate-jwt-keys 轮换密钥。",
-        },
-      },
-      testing: {
-        title: "冒烟测试",
-        caption: "pytest 与 YAML 驱动用例",
-        body:
-          "生成项目内置 app/st_test 冒烟测试目录，用 TestClient 直接调用 FastAPI 应用。",
-        items: {
-          pytest: "pytest 负责发现和执行用例。",
-          client: "TestClient 不需要额外手工启动服务。",
-          assertions: "StExpect 聚焦必要字段断言，减少脆弱测试。",
         },
       },
     },

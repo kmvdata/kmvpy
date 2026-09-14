@@ -5,11 +5,11 @@ import secrets
 
 from kmvpy.common.exception.kmv_exception import KmvException
 from kmvpy.common.tool.logger import logger
-from kmvpy.core.main.service.auth_session_service import AuthSessionService
 from kmvpy.core.main.service.jwt_service import JwtUserInfo
 from sqlalchemy.exc import IntegrityError
 
 from __PROJECT_NAME__.common.dependencies.client import ClientRequestInfo
+from __PROJECT_NAME__.common.auth_session import AuthSessionService
 from __PROJECT_NAME__.common.infra.storage.default_storage import DefaultStorage
 from __PROJECT_NAME__.common.dto.admin.admin_op import (
     AdminCreateReviewerReq,

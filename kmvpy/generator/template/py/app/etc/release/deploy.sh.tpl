@@ -19,8 +19,7 @@
 #    再使用该环境中的 python / pip；无 conda 则用系统默认 python / pip。若已设置 PYTHON 则
 #    只认该解释器。若最终仍无可用「python -m pip」，则报错退出。
 # 2. 始终使用 pip install -U --no-deps --force-reinstall <wheel> 安装当前应用，不随 wheel 安装依赖
-# 3. 安装应用后，默认执行 pip install -U --force-reinstall kmvpy，强制安装最新的 kmvpy 框架版本
-#    （如需跳过可设置 KMVPY_SKIP_UPGRADE=1）
+# 3. 安装应用后，强制安装并校验与本工程会话兼容层匹配的 kmvpy 固定版本
 # 4. 安装成功后，若 ROTATE_JWT_KEYS=1，则在当前 Python/conda 环境中轮换 config.yaml 的 JWT 密钥对
 # 5. 若存在 __PROJECT_NAME__.pid 且进程仍存活，则 SIGTERM 停止，必要时 SIGKILL
 # 6. 以已安装包内的 __PROJECT_NAME__.core.app.run 为入口启动（等价于安装树中的
@@ -38,8 +37,6 @@
 #   CONDA_ENV           conda 环境名；不设默认值，走 conda 分支时若为空则报错；biu deploy 会注入，亦可手动 export
 #   WHEEL               指定 wheel 路径；未设置则在脚本目录下自动挑选最新的 __PROJECT_NAME__-*.whl
 #   ROTATE_JWT_KEYS     设为 1: 安装 wheel 后、启动服务前执行 kmvpy rotate-jwt-keys config.yaml
-#   KMVPY_SKIP_UPGRADE  设为 1: 跳过默认的 kmvpy 强制升级；否则每次部署都会执行
-#                        pip install -U --force-reinstall kmvpy 以安装最新版
 #   __PROJECT_NAME_UPPER___DEPLOY_SH
 #                       当前 deploy.sh 的绝对路径；由脚本启动服务前自动 export，通常无需手动设置
 #
@@ -50,6 +47,7 @@ cd "$SCRIPT_DIR"
 
 CONFIG="${SCRIPT_DIR}/config.yaml"
 PIDFILE="${SCRIPT_DIR}/__PROJECT_NAME__.pid"
+KMVPY_VERSION="0.2.3"
 
 die() {
   echo "error: $*" >&2
@@ -163,13 +161,11 @@ fi
 echo "==> pip install -U --no-deps --force-reinstall $WHEEL"
 "$PYTHON" -m pip install -U --no-deps --force-reinstall "$WHEEL"
 
-# 默认强制安装最新的 kmvpy（“一定 reinstall”）：每次发布都对 kmvpy 执行
-# pip install -U --force-reinstall，确保线上框架与最新版一致；
-# 需要跳过时可设置 KMVPY_SKIP_UPGRADE=1。
-if [[ "${KMVPY_SKIP_UPGRADE:-}" != "1" ]]; then
-  echo "==> 强制安装最新 kmvpy: pip install -U --force-reinstall kmvpy"
-  "$PYTHON" -m pip install -U --force-reinstall "kmvpy"
-fi
+echo "==> 安装固定 kmvpy 版本: ${KMVPY_VERSION}"
+"$PYTHON" -m pip install --force-reinstall "kmvpy==${KMVPY_VERSION}"
+INSTALLED_KMVPY_VERSION="$("$PYTHON" -c 'import kmvpy; print(kmvpy.__version__)')"
+[[ "$INSTALLED_KMVPY_VERSION" == "$KMVPY_VERSION" ]] ||
+  die "kmvpy 版本校验失败：期望 ${KMVPY_VERSION}，实际 ${INSTALLED_KMVPY_VERSION}"
 
 if [[ "${ROTATE_JWT_KEYS:-}" == "1" ]]; then
   echo "==> 轮换 JWT 密钥对: $CONFIG"

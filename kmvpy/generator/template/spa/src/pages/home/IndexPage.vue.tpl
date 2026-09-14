@@ -75,7 +75,6 @@
                 <li>demo_project/</li>
                 <li><span>├─</span> __PY_PROJECT_NAME__/</li>
                 <li><span>│ ├─</span> app/etc/develop/config.yaml</li>
-                <li><span>│ ├─</span> app/st_test/</li>
                 <li><span>│ └─</span> __PROJECT_NAME__/core/main/</li>
                 <li><span>└─</span> __SPA_PROJECT_NAME__/</li>
               </ul>
@@ -394,9 +393,8 @@ type CapabilityIcon =
   | "vpn_key"
   | "schedule"
   | "sync_alt"
-  | "science"
   | "account_tree";
-type CodeTabKey = "cli" | "asgi" | "jwt" | "smoke";
+type CodeTabKey = "cli" | "asgi" | "jwt";
 
 interface LabelValueItem {
   value: string;
@@ -500,20 +498,6 @@ def gen_asgi_app(config_path: str | None = None) -> FastAPI:
     jwt:
       algorithm: RS256
       active_kid: k-admin-active`,
-  smoke: `test_send_email_verify_code:
-  comment: user email verification smoke test
-  case_list:
-    - comment: send registration verification code
-      steps:
-        - step_kid: STEP_SEND_EMAIL_VERIFY_CODE
-          action: POST /api/user/email/verify-code
-          request:
-            email: smoke@example.com
-            scene: register
-      expected:
-        code: 0
-        data:
-          sent: false`,
   };
 });
 
@@ -584,11 +568,6 @@ const capabilityItems = computed<CapabilityItem[]>(() => [
     body: t("landing.capabilities.socketBody"),
   },
   {
-    icon: "science",
-    title: t("landing.capabilities.smokeTitle"),
-    body: t("landing.capabilities.smokeBody"),
-  },
-  {
     icon: "account_tree",
     title: t("landing.capabilities.generatorTitle"),
     body: t("landing.capabilities.generatorBody"),
@@ -599,7 +578,6 @@ const workflowSteps = computed(() => [
   t("landing.workflow.create"),
   t("landing.workflow.configure"),
   t("landing.workflow.extend"),
-  t("landing.workflow.test"),
   t("landing.workflow.deploy"),
   t("landing.workflow.rotate"),
 ]);
@@ -622,12 +600,6 @@ const codeExamples = computed<CodeExample[]>(() => [
     label: t("landing.examples.jwtLabel"),
     icon: "vpn_key",
     code: codeExampleSnippets.value.jwt,
-  },
-  {
-    key: "smoke",
-    label: t("landing.examples.smokeLabel"),
-    icon: "science",
-    code: codeExampleSnippets.value.smoke,
   },
 ]);
 

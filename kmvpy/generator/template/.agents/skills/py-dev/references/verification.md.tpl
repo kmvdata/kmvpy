@@ -2,33 +2,11 @@
 
 实现任务交付前、代码评审形成结论前读取本文件。纯解释任务仅在用户要求测试方案或合规检查时读取。
 
-## 测试位置与格式
+## 验证策略
 
-- 冒烟测试位于 `__PY_PROJECT_NAME__/app/st_test`。
-- 测试类沿用 `StBasePyTest` 等现有 kmvpy 测试基类与 fixtures。
-- 路由测试通常使用同名 `.yaml` 数据文件。
-- YAML `step.action` 使用 `METHOD /uri`，路径必须是最终 API URL。
-- 优先扩展最接近的现有测试；没有合适主题时才新建测试与数据文件。
+根据变更风险选择可重复的语法、导入、配置加载、应用初始化、契约检查和目标行为验证；不要为了形式完整引入与工程无关的测试框架。
 
-## 推荐命令
-
-从仓库根目录运行完整冒烟测试：
-
-```bash
-cd __PY_PROJECT_NAME__
-source .venv/bin/activate
-pytest app/st_test -vv
-```
-
-先运行聚焦测试以缩短反馈：
-
-```bash
-cd __PY_PROJECT_NAME__
-source .venv/bin/activate
-pytest app/st_test/test_user_opt_router.py -vv
-```
-
-按变更风险补充以下检查：
+建议覆盖以下检查：
 
 - Python 导入/语法：对修改包运行 `python -m compileall` 或项目已有静态检查。
 - ORM：验证模型注册、表初始化、约束、默认值与目标数据库兼容性。

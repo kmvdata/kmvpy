@@ -7,6 +7,7 @@ import {
   createApiClient,
   clearStoredAuthorization,
   getStoredAuthorization,
+  getStoredAuthorizationExpiresAt,
   getWithApiClient,
   installAuthTokenResponseInterceptor,
   postWithApiClient,
@@ -42,6 +43,8 @@ const clearStoredAdminAuthorizationLocally = () => {
 };
 
 export const getStoredAdminAuthorization = () => getStoredAuthorization(ADMIN_AUTH_STORAGE_KEY);
+export const getStoredAdminAuthorizationExpiresAt = () =>
+  getStoredAuthorizationExpiresAt(ADMIN_AUTH_STORAGE_KEY);
 export const setStoredAdminAuthorization = (value: string) => {
   setStoredAuthorization(value, ADMIN_AUTH_STORAGE_KEY);
   AdminSocketClient.notifyAuthorizationChanged(value);

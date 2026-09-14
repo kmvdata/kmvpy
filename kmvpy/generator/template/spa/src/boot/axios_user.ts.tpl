@@ -6,6 +6,7 @@ import {
   createApiClient,
   clearStoredAuthorization,
   getStoredAuthorization,
+  getStoredAuthorizationExpiresAt,
   getWithApiClient,
   installAuthTokenResponseInterceptor,
   installAuthRedirectInterceptor,
@@ -37,6 +38,8 @@ let socketLogoutListenerBound = false;
 let socketApiNoticeOff: (() => void) | null = null;
 
 export const getStoredUserAuthorization = () => getStoredAuthorization(USER_AUTH_STORAGE_KEY);
+export const getStoredUserAuthorizationExpiresAt = () =>
+  getStoredAuthorizationExpiresAt(USER_AUTH_STORAGE_KEY);
 export const setStoredUserAuthorization = (value: string) => {
   setStoredAuthorization(value, USER_AUTH_STORAGE_KEY);
   UserSocketClient.notifyAuthorizationChanged(value);

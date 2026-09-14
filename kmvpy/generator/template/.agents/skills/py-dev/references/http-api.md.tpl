@@ -31,4 +31,4 @@
 2. 核对 HTTP 方法、鉴权角色、请求 DTO、响应 DTO、分页元数据与错误语义。
 3. 若契约对 SPA 可见，同时读取 `socket-and-spa-contracts.md` 并同步前端。
 4. 若改变公共错误，读取 `config-and-errors.md`。
-5. 为新增或修改接口补充相应冒烟测试；交付前读取 `verification.md`。
+5. 按风险验证新增或修改接口的成功、鉴权与错误路径；交付前读取 `verification.md`。
