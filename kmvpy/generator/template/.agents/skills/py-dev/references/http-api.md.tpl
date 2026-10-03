@@ -25,6 +25,13 @@
 - 需要设置 cookie/header 等 HTTP 细节时可在 Router 包装 Service 返回值，但不得把业务决策带回 Router。
 - 新 Router 文件导入并加入 `core/main/router/__init__.py` 的 `routers` 列表。
 
+## 登录会话与实时读取
+
+- `auth_user` / `auth_admin` 验证对应角色、JWT、cookie 与登录会话，保留稳定 `sid` 上下文，参与对应身份的 HTTP 保护/观测；不要在 Router 复制 Redis 准入或鉴权逻辑。
+- `POST /api/{user|admin}/socket/session` 复用同域依赖，成功包装 `code: 0, data: {valid: true}`；校验与续签是网络会话契约，不新增业务模型。
+- 明确登录失效为带域与 `session_invalid` 标记的 401；过期恢复的共享存储暂不可用为 503，执行限流为 429。保持结构化错误及 CORS 暴露必要响应头，SPA 才能区分退出与保留登录重试。
+- 页面权威读取允许客户端取消，但取消不能代替客户端对旧资源/旧会话/生命周期的迟到结果检查；相关接口/错误变更同时读取主 Skill 的 Socket 和 config references。
+
 ## 契约检查
 
 1. 拼接 `APIRouter.prefix + route.path` 得到最终 URL。

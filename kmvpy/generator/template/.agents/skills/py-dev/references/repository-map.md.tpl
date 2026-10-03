@@ -17,18 +17,24 @@
 |---|---|
 | `common/dto/user` | 用户端请求/响应 DTO |
 | `common/dto/admin` | 管理端请求/响应 DTO |
-| `common/dependencies` | FastAPI 鉴权、客户端上下文、审计等依赖 |
+| `common/dependencies` | FastAPI 鉴权、稳定会话上下文、鉴权 HTTP 保护入口与审计依赖 |
+| `common/auth_session.py` | access 验证、cookie/Redis 登录会话与同 sid 续签 |
 | `common/exception` | 业务错误常量与 builder |
 | `common/conf` | `AppConfig` 与配置读取入口 |
 | `common/infra/orm` | SQLAlchemy 表模型与集中注册 |
 | `common/infra/storage` | 数据库、Redis 等技术资源生命周期 |
+| `common/infra/realtime_{auth,guard,http}.py` | 传输鉴权适配、Redis 原子额度/TTL 与 HTTP 指标 |
 | `core/main/router/user` | 用户端 HTTP/Socket.IO 入口 |
 | `core/main/router/admin` | 管理端 HTTP/Socket.IO 入口 |
 | `core/main/service/user` | 用户端事务协调与响应组装 |
 | `core/main/service/admin` | 管理端事务协调与响应组装 |
 | `core/main/service/common` | 中性入口 Service；其他 Service 仍不得调用它 |
-| `core/main/hub` | 按业务主题组织的规则与数据访问 |
+| `core/main/hub` | 按业务主题组织的规则与数据访问；`realtime.py` 为通用传输登记/续期/订阅与保护编排 |
 | `core/main/schedule` | 定时任务入口与集中注册 |
+
+`core/main/service/common/realtime.py` 是实时技术入口，user/admin Socket Service 保留私有房间与离线投递兼容路径；不扩展成普通业务越层例外。`core/main/__init__.py` 负责 ASGI/Socket 注册、CORS、HTTP 指标与关闭清理。
+
+`__PY_PROJECT_NAME__/tests/test_realtime.py` 验证真实 Redis 原子保护与合成凭据；`tests/realtime_fixture.py` / `fixture_config.py` 提供独立本机浏览器服务与临时配置。复现与范围见主 Skill 的 `verification.md` 和仓库 [实时文档](../../../../docs/web-realtime.md)。
 
 `core/main/hub` 是业务规则与数据访问的唯一归属。新业务规则统一按主 Skill 放入 Hub，不再建立平行的业务规则层。
 

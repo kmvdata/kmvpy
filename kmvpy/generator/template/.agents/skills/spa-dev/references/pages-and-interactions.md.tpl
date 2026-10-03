@@ -30,6 +30,12 @@
 
 使用 `try/catch/finally` 或等价状态机保证成功、失败和取消路径都恢复 pending 状态。避免请求竞态让旧响应覆盖新筛选条件；需要时用请求序号、AbortController 或现有去重机制。
 
+## 可恢复资源读取
+
+实时变化或页面恢复驱动的资源读取优先复用 `usePageRefresh`，传入权限域、稳定资源身份、带 signal 的 API 读取及 apply/error 回调；页面仍负责 loading、旧数据显示和用户反馈。首次、筛选/资源切换、手动、通知、重试与恢复都进入同一资格与竞态边界，避免再用 watch/onMounted 无条件发起重复读取。
+
+隐藏、离线、停用时保留显示与待同步需求；恢复后合并必要请求，应用前隔离旧资源、旧会话与旧生命周期。具体行为和未来版本适配见主 Skill 的 `sockets.md`；只迁移本次受影响消费者，不宣称所有页面已接入，也不扩大到跨标签业务缓存。
+
 ## Quasar 与交互
 
 - 优先使用现有 Quasar form/table/dialog/notify/navigation 组件和项目语义类，不自造第二套 primitive。

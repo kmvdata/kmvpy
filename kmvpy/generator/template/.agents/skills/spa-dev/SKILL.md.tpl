@@ -24,7 +24,7 @@ description: Use for designing, implementing, reviewing, or explaining any __SPA
 | route、guard、redirect、Layout、drawer、导航、页面入口 | [`references/routing-and-navigation.md`](references/routing-and-navigation.md) |
 | DTO、API wrapper、Axios、ApiResponse、auth、URL/方法、后端契约 | [`references/network-and-contracts.md`](references/network-and-contracts.md) |
 | i18n、Kmv 错误、用户文案、aria/alt、键盘与 focus | [`references/i18n-and-accessibility.md`](references/i18n-and-accessibility.md) |
-| Socket.IO、`api_notice`、页面刷新、多标签页、离线补偿 | [`references/sockets.md`](references/sockets.md)；涉及 API 时同时读取 network reference |
+| Socket.IO、连接资格/选主、会话续签、`api_notice`、页面恢复、多标签页、订阅补偿 | [`references/sockets.md`](references/sockets.md)；涉及 API 时同时读取 network reference |
 | Vue 页面、组件、表单、列表、状态、Dialog、Notify、响应式交互 | [`references/pages-and-interactions.md`](references/pages-and-interactions.md) |
 | CSS、token、主题、字号模式、访问域样式与视觉响应式 | [`references/styling.md`](references/styling.md) |
 | 实现交付、代码评审、构建、契约和视觉检查 | [`references/verification.md`](references/verification.md) |
@@ -41,7 +41,7 @@ description: Use for designing, implementing, reviewing, or explaining any __SPA
 
 ```text
 route -> guard -> layout -> page/component -> ApiXxx -> user/admin/generic HTTP client -> Axios -> backend
-socket api_notice -----------------------> page handler -> authoritative API refresh
+domain RealtimeManager -> api_notice -> page hook -> RefreshCoordinator -> authoritative API refresh
 ```
 
 | 层 | 职责 |
@@ -50,7 +50,8 @@ socket api_notice -----------------------> page handler -> authoritative API ref
 | Layout | toolbar、drawer、导航、当前标题与 `router-view` |
 | Page/Component | 页面状态、交互、数据呈现和反馈 |
 | DTO/API | 后端传输形状、URL/方法、对应身份的 HTTP client 与结构化错误 |
-| Socket | 刷新信号、对应域鉴权、多标签页协作 |
+| RealtimeManager | 每域连接所有权、会话校验、续签、重试、消息转发与订阅汇总 |
+| RefreshCoordinator / usePageRefresh | 页面同步意图、资格检查、在途读取合并、取消与迟到结果隔离 |
 | i18n/CSS | 用户文案、错误翻译、语义样式、主题与字号模式 |
 
 ## 访问域边界
@@ -66,7 +67,9 @@ socket api_notice -----------------------> page handler -> authoritative API ref
 - transport JSON 字段保持后端 `snake_case`，nullable 使用 `T | null`，KID/BIGINT 使用 `string`；TypeScript 方法和本地状态使用 `camelCase`。
 - 页面只调用 API wrapper，不直接调用 raw Axios/`fetch` 或手写鉴权头；API wrapper 不管理 UI 状态、Dialog、Notify、路由或业务缓存。
 - 认证 wrapper 可以按既有边界同步对应域 Socket authorization/logout；普通业务 API 不操作 Socket 生命周期。
-- Socket `api_notice` 只触发 API 刷新，不作为业务数据源；页面处理后按策略移除已消费消息。
+- 页面只注册消费与订阅意图；真实连接由 `src/network/realtime` 的管理器统一创建，两域保持独立底层 transport。
+- 连接资格与 guard 共用已解析路由元数据，并检查登录会话、可见、在线和生命周期；初始化不等于建连。稳定登录 `sid` 不随普通 token 续签变化。
+- Socket `api_notice` 只表达同步需求，不作为业务数据源；可恢复的资源读取复用 `usePageRefresh`，隐藏/停用时保留需求和显示数据，恢复后合并权威读取。页面处理后按策略移除已消费消息。
 - Layout 不承载业务表单、列表、详情或页面请求。
 - 所有用户可见文本和错误都经 i18n/Kmv 链处理，两种语言同步维护。
 - 样式遵循 layout/theme/app/access-area/scoped 分层；访问区共享样式分别落在 `home.css`、`user.css`、`admin.css`，并验证 `normal|large`、`light|dark|eye` 与窄屏/桌面。
@@ -79,7 +82,7 @@ socket api_notice -----------------------> page handler -> authoritative API ref
 - [ ] DTO 的 snake_case、nullable、KID 和共享权威定义与后端一致。
 - [ ] API wrapper 没有 UI/业务状态，结构化错误未被普通 `Error` 覆盖。
 - [ ] 用户文案、fallback、Kmv code、aria/alt 在 `zh-CN` 与 `en-US` 中一致。
-- [ ] Socket 仍是刷新信号，页面使用正确域 hook 并处理消费/去重。
+- [ ] Socket 仍是刷新信号；页面使用正确域 hook/刷新协调器，未自建连接，资格与旧会话/迟到结果隔离有效。
 - [ ] CSS 进入正确层，未新增第二套视觉体系，主题/字号/响应式可用。
 - [ ] strict、lint、build/checker 未被关闭；验证结果和未测风险明确。
 

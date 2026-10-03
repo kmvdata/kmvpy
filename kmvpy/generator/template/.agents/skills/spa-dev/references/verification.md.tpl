@@ -20,7 +20,7 @@ bun run build
 ```
 
 - `build` 同时覆盖 Quasar/Vite 构建与配置中的 Vue TypeScript checker。
-- 当前 `package.json` 没有单元测试脚本；不要声称运行了不存在的测试。新增测试基础设施需要独立理由和任务范围。
+- 当前 `bun run test` 运行 `tests/realtime.test.js`；修改鉴权、实时协作或刷新调度时运行并按受影响行为补充用例。纯文档改动核对路径/契约与 diff 即可，不为未变实现重复构建。
 - `bun run format` 会批量写文件，不把它当作只读检查；只在用户要求或变更范围可控时运行，并审阅 diff。
 - 不通过关闭 strict、ESLint、checker 或规则来让检查通过。
 
@@ -32,6 +32,20 @@ bun run build
 - Auth：user/admin token、401、续签、logout、跨标签和登录回跳互不污染。
 - Socket：path/namespace/event、过滤、KID 比较、去重、消费、刷新失败、重连和多标签行为。
 - 页面：首次 loading、refresh、submit、empty、error、success、重复点击和请求竞态。
+
+## 实时与恢复验证
+
+从 `__SPA_PROJECT_NAME__` 运行 `bun run test`。用例应验证可观察行为，不能只匹配源码字符串：
+
+- 同会话多标签稳态共享、两域底层独立；一域退出/故障不影响另一域，公开页 0、路由离开/隐藏/离线/关闭后交接。
+- 并发独占、等待锁取消、持锁不受广告租约抢占；Locks 抛错/拒绝、BroadcastChannel 构造/发送失败、存储读写失败与完全不能转发的实际行为。
+- 慢握手连续续签、原 transport 续期点、故障退避不被 token 更新跳过；旧 Socket 事件、旧 HTTP 401/续签、旧登录会话隔离与只读退出。
+- 隐藏/停用恢复不请求、返回补偿、多恢复事件合并、在途读取共享、必要尾随刷新、资源/生命周期迟到结果拒绝。
+- subscribe/unsubscribe 拒绝/超时不记成功，最慢有效基线保留，交接/断线/重新加入与校准 ACK 的遗漏补偿；未来版本适配只用合成契约验证，不伪造业务协议。
+
+真实浏览器验收入口是 `tests/browser-acceptance.mjs`，配套 `__PY_PROJECT_NAME__/tests/realtime_fixture.py`、临时签名密钥/测试 cookie 和独立本机 Redis。按仓库 [Web 实时连接文档](../../../../docs/web-realtime.md) 启动并构建对应测试环境；可用 `PLAYWRIGHT_MODULE` / `CHROME_EXECUTABLE` 指定已安装运行时。合成服务仅本机使用，不发布或连接真实账号配置，验收后关闭自己启动的服务。
+
+模拟运行时测试不能代替真实浏览器/实时传输。报告分别说明合成服务、真实账号、生产代理与压力测试；注入 pagehide/pageshow 不等于原生后台可见性、BFCache 命中或系统睡眠已验收。记录实际断言与未执行原因，不固化历史测试数量或推断生产容量。
 
 ## 视觉与交互检查
 

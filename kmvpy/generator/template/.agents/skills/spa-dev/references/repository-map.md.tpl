@@ -15,7 +15,7 @@
 - 技术栈为 Quasar SPA、Vue 3、TypeScript strict、Vite、Vue Router、Pinia、Axios、Vue I18n 和 Socket.IO client。
 - 路由模式为 history；浏览器构建目标为 ES2022，Node 目标为 22，`package.json` 要求 Node >= 22.22.0。
 - 仓库存在 `bun.lock`，默认使用 Bun；`package.json` 当前未声明 `packageManager` 字段。
-- 常用命令为 `bun run dev`、`bun run lint`、`bun run build` 和 `bun run format`。
+- 常用命令为 `bun run dev`、`bun run test`、`bun run lint`、`bun run build` 和 `bun run format`；test 当前运行 `tests/realtime.test.js` 的行为测试。
 - `VITE_API_BASE_URL` 与 `VITE_AUTH_STORAGE_KEY` 在网络模块加载时必须存在。
 
 `quasar.config.ts` 当前 boot 顺序为：
@@ -38,7 +38,10 @@ app_logo -> pinia -> i18n -> framework_style -> axios -> axios_user -> axios_adm
 - `src/composables`：可复用 Vue 生命周期与状态组合逻辑。
 - `src/network/dto`：后端传输契约，当前按 `user`、`admin` 组织。
 - `src/network/api`：静态 API wrapper，当前按 `user`、`admin` 组织。
-- `src/network/socket`、`src/network/admin_socket`：两套隔离的实时连接和多标签协作。
+- `src/network/realtime`：共享基础设施；`manager.ts` 所有权/连接/续期/订阅，`client.ts` 传输适配，`runtime.ts` 浏览器协作，`session.ts` 稳定会话/存储覆盖，`lifecycle.ts` 路由资格，`refresh.ts` 权威读取协调。
+- `src/network/socket`、`src/network/admin_socket`：隔离的 user/admin 实例 wrapper、page-message store 与 active-page bridge，复用上述管理器。
+- `src/composables/usePageRefresh.ts`：页面资源读取、订阅与激活/停用边界；现有 user/admin 工单页已接入，不代表全部页面已迁移。
+- `tests/realtime.test.js`：可注入运行时的行为测试；`tests/browser-acceptance.mjs`：真实浏览器与本机合成后端验收，前置条件见 `verification.md`。
 - `src/css`：动态字号层、主题层、Quasar/遗留桥接和访问域样式。
 - `src/i18n`：`zh-CN`、`en-US` 文案与 Kmv 错误翻译。
 - `src/utils/frameworkStyle.ts`：主题和字号模式切换。

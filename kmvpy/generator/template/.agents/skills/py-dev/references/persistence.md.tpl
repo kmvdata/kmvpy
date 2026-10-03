@@ -66,6 +66,10 @@ class ModelName(KOrmBase):
 - 跨 Hub 重复且完全无业务语义的技术行为才适合下沉 Storage/Infra。
 - 保持 kmvpy 所需的 Kosmos 反向资源绑定等框架兼容行为；该兼容绑定仅服务底层资源访问，不代表项目存在平行于 Hub 的业务层。
 
+## 实时 Redis 保护
+
+实时连接、订阅与鉴权 HTTP 的跨进程计数复用 `common/infra/realtime_guard.py`，不要用 `DefaultStorage` 普通缓存的读改写代替 Lua 原子操作。额度身份、唯一连接续租/TTL、旧成员清理和故障策略见主 Skill 直接链接的 `socket-and-spa-contracts.md`；正常多设备不能依赖前端选主来保护后台。
+
 ## Session
 
 - 只由 Service 进入 `DefaultStorage.instance().session_scope()`。

@@ -25,7 +25,7 @@ description: Use for designing, implementing, reviewing, or explaining any __PY_
 | ORM、SQLAlchemy、Storage、Redis、session、模型注册、数据库兼容 | [`references/persistence.md`](references/persistence.md)；涉及事务时同时读取 `service-hub.md` |
 | AppConfig、环境配置 helper、业务错误、`KmvException` | [`references/config-and-errors.md`](references/config-and-errors.md) |
 | Schedule、cron、任务注册、幂等与失败处理 | [`references/schedules.md`](references/schedules.md) |
-| Socket.IO 或任何 SPA 可见的 URL/方法/DTO/KID/nullable 变更 | [`references/socket-and-spa-contracts.md`](references/socket-and-spa-contracts.md) |
+| Socket.IO、登录会话/续签、实时资源保护，或 SPA 可见的 URL/方法/DTO/KID/nullable 变更 | [`references/socket-and-spa-contracts.md`](references/socket-and-spa-contracts.md) |
 | 实现交付、代码评审、测试方案、分层合规检查 | [`references/verification.md`](references/verification.md) |
 
 ## 技术基线
@@ -75,6 +75,12 @@ Schedule ─────────────┴─> Service ─> Hub ─> In
 - 一个含 `session` 的粗粒度操作需要多表联动时，在当前方法内直接使用该 session 访问相关 ORM/Infra。
 - 多个含 `session` 的 Hub 方法需要共享事务时，只能由 Service 创建同一个 session 并逐一调用。
 - 不含 `session` 的 Hub 方法也不得自行创建 session 后转调含 `session` 的 Hub 方法。
+
+## 实时基础设施边界
+
+- user/admin 分别鉴权与观测；稳定登录 `sid`、可续签 access token 和传输 SID 是三种身份，客户端协调标识不授予权限。
+- 通过 `RealtimeHub` 与 Infra 维护会话、订阅和 Redis 原子保护；保留正常多设备登录与既有离线补偿，不把前端单连接当作后台唯一保护。
+- 明确会话失效与 token 到期、暂时故障、限流的结构化契约；默认资源保护为 `observe`，生产容量证据与显式配置决定是否执行限制。详情见 Socket reference。
 
 ## 红线
 

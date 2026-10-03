@@ -26,6 +26,12 @@
 - history 部署必须由服务端把未知前端路径回退到 `index.html`。
 - 不假设代码中的 fallback route name 仍存在；以 `routes.ts` 为准核对。
 
+## 路由与实时资格联动
+
+- guard 与 `src/network/realtime/lifecycle.ts` 共用 `routeAuthDomain(route.matched)`，从 `requiresAuth` / `requiresAdminAuth` 得到权限域；不要用 `/app`、`/admin` 前缀作为连接资格依据。
+- `pageLifecycle.install(router)` 在成功 `afterEach` 和 `router.isReady()` 后更新已解析域，结合可见性、在线与 pagehide/pageshow、freeze/resume。保留懒加载、重定向、前进后退和跨域切换的最终导航语义，失败导航不切域。
+- 有 token 只代表可参与对应域会话校验；全局初始化不立即建连，公开页/登录页不主动连接。KeepAlive 页还须通过 composable 的 activated/deactivated 暂停读取与订阅；恢复规则见主 Skill 的 `sockets.md`。
+
 ## 页面放置
 
 - 用户内容页放在 `src/pages/app/<group>`，URL 保留分组段，例如 `/app/personal/profile`。
