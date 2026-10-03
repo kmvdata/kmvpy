@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from 'axios';
 import { postAdminApi } from '../../../boot/axios_admin';
 import type {
   AdminWorkTicketDetailReq,
@@ -11,19 +12,21 @@ import type {
 export const ADMIN_WORK_TICKET_DETAIL_API_URI = '/api/admin/work_ticket/detail';
 
 export class ApiAdminWorkTicket {
-  static list(requestData: AdminWorkTicketListReq): Promise<AdminWorkTicketListRes> {
+  static list(requestData: AdminWorkTicketListReq, config?: AxiosRequestConfig): Promise<AdminWorkTicketListRes> {
     return postAdminApi<AdminWorkTicketListReq, AdminWorkTicketListRes>(
       '/api/admin/work_ticket/list',
       requestData,
       '获取工单列表失败',
+      config,
     );
   }
 
-  static detail(requestData: AdminWorkTicketDetailReq): Promise<AdminWorkTicketDetailRes> {
+  static detail(requestData: AdminWorkTicketDetailReq, config?: AxiosRequestConfig): Promise<AdminWorkTicketDetailRes> {
     return postAdminApi<AdminWorkTicketDetailReq, AdminWorkTicketDetailRes>(
       ADMIN_WORK_TICKET_DETAIL_API_URI,
       requestData,
       '获取工单详情失败',
+      config,
     );
   }
 

@@ -220,7 +220,7 @@ return {"ok", updated, tostring(ttl)}
         redis = cls._redis(auth_role)
         if redis is None:
             if access_token_expired:
-                cls._raise_unauthorized()
+                raise HTTPException(503, detail={'kind': 'session_store_unavailable'})
             logger.warning(
                 "认证 Redis 未配置，暂时仅按未过期 JWT 放行: auth_role=%s",
                 auth_role,
@@ -253,7 +253,7 @@ return {"ok", updated, tostring(ttl)}
                     auth_role,
                     exc_info=exc,
                 )
-                cls._raise_unauthorized()
+                raise HTTPException(503, detail={'kind': 'session_store_unavailable'})
             logger.warning(
                 "认证 Redis 暂时不可用，按未过期 JWT 短暂放行: auth_role=%s",
                 auth_role,

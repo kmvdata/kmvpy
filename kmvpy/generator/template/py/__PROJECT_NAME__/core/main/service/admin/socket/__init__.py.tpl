@@ -14,6 +14,7 @@ from kmvpy.common.tool.logger import logger
 from kmvpy.core.main.service.jwt_service import JwtService, JwtUserInfo
 
 from __PROJECT_NAME__.core.main.hub.user_op import UserOpHub
+from __PROJECT_NAME__.core.main.hub.realtime import RealtimeHub
 
 
 @dataclass(frozen=True)
@@ -128,8 +129,11 @@ class AdminSocketService:
                 delay = max(0, session.access_expires_at - int(time.time()))
                 if delay > 0:
                     await asyncio.sleep(delay)
+                if AdminSocketService._sid_to_session.get(session.sid) is not session:
+                    return
                 raw_server = AdminSocketService._raw_socketio_server()
                 if raw_server is not None:
+                    await raw_server.emit('auth_status', {'kind': 'token_expired'}, to=session.sid, namespace=AdminSocketService.SOCKET_NAMESPACE)
                     await raw_server.disconnect(
                         session.sid,
                         namespace=AdminSocketService.SOCKET_NAMESPACE,
@@ -173,6 +177,7 @@ class AdminSocketService:
                 admin_kid,
                 exc_info=exc,
             )
+            raise
 
     @staticmethod
     async def _leave_admin_room(sid: str, admin_kid: int) -> None:
@@ -259,28 +264,39 @@ class AdminSocketService:
             logger.warning("管理端 socket 连接缺少 token，sid=%s", sid)
             return False
 
-        try:
-            admin_info = await AdminSocketService._authenticate_socket_token(token)
-        except Exception as exc:
-            logger.warning("管理端 socket 鉴权失败，sid=%s", sid, exc_info=exc)
-            return False
+        admin_info = await RealtimeHub.connect('admin', sid, token, environ, auth)
 
         session = AdminSocketSession(
             sid=sid,
             admin_kid=int(admin_info.kid),
             access_expires_at=int(getattr(admin_info, "expires_at", 0) or 0),
         )
-        AdminSocketService._add_session(session)
-        AdminSocketService._schedule_socket_token_expiry(session)
-        await AdminSocketService._enter_admin_room(
-            sid=sid,
-            admin_kid=session.admin_kid,
-        )
-        logger.info("管理端 socket 鉴权成功，sid=%s, admin_kid=%s", sid, session.admin_kid)
+        try:
+            AdminSocketService._add_session(session)
+            AdminSocketService._schedule_socket_token_expiry(session)
+            await AdminSocketService._enter_admin_room(
+                sid=sid,
+                admin_kid=session.admin_kid,
+            )
+            logger.info("管理端 socket 鉴权成功，sid=%s, admin_kid=%s", sid, session.admin_kid)
+        except BaseException:
+            entry = RealtimeHub.sessions.get(('admin', sid))
+            if entry is not None:
+                await entry.guard.metric('initialization_failures')
+            AdminSocketService._remove_session(sid)
+            await RealtimeHub.disconnect('admin', sid)
+            raise
+
+        entry = RealtimeHub.sessions.get(('admin', sid))
+        if entry is not None:
+            await entry.guard.metric('connections_accepted')
+            if entry.recovery:
+                await entry.guard.metric('recovery_success')
         return True
 
     @staticmethod
     async def _handle_disconnect(sid: str) -> None:
+        await RealtimeHub.disconnect('admin', sid)
         session = AdminSocketService._remove_session(sid)
         if session is None:
             logger.info("未知管理端 socket 断开，sid=%s", sid)
@@ -309,3 +325,14 @@ class AdminSocketService:
             await AdminSocketService._handle_disconnect(sid=sid)
             return None
         raise ValueError(f"不支持的管理端 socket 事件: {event}")
+
+    @staticmethod
+    async def update_authorization(sid: str, data):
+        result = await RealtimeHub.update('admin', sid, data)
+        if result.get('ok') and sid in AdminSocketService._sid_to_session:
+            old = AdminSocketService._sid_to_session[sid]
+            new = AdminSocketSession(sid=old.sid, admin_kid=old.admin_kid,
+                access_expires_at=result['expires_at'])
+            AdminSocketService._sid_to_session[sid] = new
+            AdminSocketService._schedule_socket_token_expiry(new)
+        return result

@@ -1,134 +1,125 @@
-import { defineBoot } from '#q-app/wrappers';
-import { isAxiosError, type AxiosInstance } from 'axios';
-
+import { isSessionValidationResult } from "src/network/realtime/session";
+import { defineBoot } from "#q-app/wrappers";
+import {
+  isAxiosError,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
+import type { Router } from "vue-router";
 import {
   AUTH_STORAGE_KEY,
   createApiClient,
   clearStoredAuthorization,
   getStoredAuthorization,
   getStoredAuthorizationExpiresAt,
-  getWithApiClient,
-  installAuthTokenResponseInterceptor,
-  installAuthRedirectInterceptor,
   postWithApiClient,
+  getWithApiClient,
   setStoredAuthorization,
-} from './axios';
+  installAuthTokenResponseInterceptor,
+  requestAuthorization,
+} from "./axios";
 import {
-  UserSocketActivePageBridge,
   UserSocketClient,
   UserSocketPageMessageStore,
-} from 'src/network/socket';
-import type { UserSocketApiNotice } from 'src/network/socket';
+  UserSocketActivePageBridge,
+} from "src/network/socket";
+import { SessionValidationError } from "src/network/realtime/manager";
+import { routeAuthDomain } from "src/network/realtime/lifecycle";
 
-declare module 'vue' {
+declare module "vue" {
   interface ComponentCustomProperties {
     $apiUser: AxiosInstance;
   }
 }
-
 export const USER_AUTH_STORAGE_KEY = `${AUTH_STORAGE_KEY}:user`;
-const USER_AUTH_INVALID_HTTP_STATUS = 401;
-const USER_LOGIN_ROUTE_NAME = 'login';
-
-const apiUser = createApiClient({ authStorageKey: USER_AUTH_STORAGE_KEY });
-let authResponseInterceptorId: number | null = null;
-let authTokenResponseInterceptorId: number | null = null;
-let socketAuthResponseInterceptorId: number | null = null;
-let socketLogoutListenerBound = false;
-let socketApiNoticeOff: (() => void) | null = null;
-
-export const getStoredUserAuthorization = () => getStoredAuthorization(USER_AUTH_STORAGE_KEY);
+const key = USER_AUTH_STORAGE_KEY;
+const apiUser = createApiClient({ authStorageKey: key });
+let authRouter: Router | null = null;
+export const getStoredUserAuthorization = () => getStoredAuthorization(key);
 export const getStoredUserAuthorizationExpiresAt = () =>
-  getStoredAuthorizationExpiresAt(USER_AUTH_STORAGE_KEY);
+  getStoredAuthorizationExpiresAt(key);
 export const setStoredUserAuthorization = (value: string) => {
-  setStoredAuthorization(value, USER_AUTH_STORAGE_KEY);
-  UserSocketClient.notifyAuthorizationChanged(value);
+  setStoredAuthorization(value, key);
+  UserSocketClient.notifyAuthorizationChanged();
 };
 export const clearStoredUserAuthorization = () => {
-  clearStoredAuthorization(USER_AUTH_STORAGE_KEY);
-  UserSocketPageMessageStore.clear();
-  UserSocketClient.broadcastLogout('manual');
+  UserSocketClient.broadcastLogout("manual");
 };
-
-export const postUserApi = async <TRequest, TResponse>(
-  url: string,
-  requestData: TRequest,
-  fallbackMessage: string,
-): Promise<TResponse> => postWithApiClient(apiUser, url, requestData, fallbackMessage);
-
-export const getUserApi = async <TResponse>(
-  url: string,
-  fallbackMessage: string,
-): Promise<TResponse> => getWithApiClient(apiUser, url, fallbackMessage);
-
-export default defineBoot(({ app, router }) => {
-  if (authResponseInterceptorId !== null) {
-    apiUser.interceptors.response.eject(authResponseInterceptorId);
-  }
-  if (authTokenResponseInterceptorId !== null) {
-    apiUser.interceptors.response.eject(authTokenResponseInterceptorId);
-  }
-  if (socketAuthResponseInterceptorId !== null) {
-    apiUser.interceptors.response.eject(socketAuthResponseInterceptorId);
-  }
-
-  const redirectToLogin = () => {
-    const currentRoute = router.currentRoute.value;
-    if (currentRoute.name === USER_LOGIN_ROUTE_NAME) {
-      return;
+const logout = () => {
+  clearStoredAuthorization(key);
+  UserSocketPageMessageStore.clear();
+  const route = authRouter?.currentRoute.value;
+  if (route && routeAuthDomain(route) === "user")
+    void authRouter?.replace({
+      name: "login",
+      query: { redirect: route.fullPath },
+    });
+};
+apiUser.interceptors.response.use(
+  (r) => r,
+  (error: unknown) => {
+    if (
+      isAxiosError(error) &&
+      error.response?.status === 401 &&
+      error.response.headers["x-auth-error"] === "session_invalid" &&
+      error.response.headers["x-auth-role"] === "user" &&
+      requestAuthorization(error.config) === getStoredAuthorization(key)
+    ) {
+      UserSocketClient.broadcastLogout("http-401");
     }
-
-    const redirect = currentRoute.fullPath || undefined;
-    const routeTarget = redirect
-      ? { name: USER_LOGIN_ROUTE_NAME, query: { redirect } }
-      : { name: USER_LOGIN_ROUTE_NAME };
-    void router.replace(routeTarget).catch(() => undefined);
-  };
-
+    return Promise.reject(
+      error instanceof Error ? error : new Error(String(error)),
+    );
+  },
+);
+installAuthTokenResponseInterceptor(apiUser, {
+  authStorageKey: key,
+  onAuthorizationChanged: () => UserSocketClient.notifyAuthorizationChanged(),
+});
+export const postUserApi = <Q, R>(
+  url: string,
+  data: Q,
+  fallback: string,
+  config?: AxiosRequestConfig,
+): Promise<R> => postWithApiClient(apiUser, url, data, fallback, config);
+export const getUserApi = <R>(
+  url: string,
+  fallback: string,
+  config?: AxiosRequestConfig,
+): Promise<R> => getWithApiClient(apiUser, url, fallback, config);
+export default defineBoot(({ app, router }) => {
+  authRouter = router;
   UserSocketClient.configure({
     getAuthorization: getStoredUserAuthorization,
-    onLogout: () => {
-      clearStoredAuthorization(USER_AUTH_STORAGE_KEY);
-      UserSocketPageMessageStore.clear();
-      redirectToLogin();
+    onLogout: logout,
+    onSessionChanged: () => UserSocketPageMessageStore.clear(),
+    validate: async (signal) => {
+      try {
+        const response = await apiUser.post<unknown>(
+          "/api/user/socket/session",
+          {},
+          { signal, timeout: 5000 },
+        );
+        if (!isSessionValidationResult(response.data))
+          throw new SessionValidationError("temporary");
+      } catch (error) {
+        if (
+          isAxiosError(error) &&
+          error.response?.status === 401 &&
+          error.response.headers["x-auth-error"] === "session_invalid" &&
+          error.response.headers["x-auth-role"] === "user" &&
+          requestAuthorization(error.config) === getStoredAuthorization(key)
+        )
+          throw new SessionValidationError("session_invalid");
+        throw new SessionValidationError("temporary");
+      }
     },
   });
   UserSocketClient.start();
-  socketApiNoticeOff?.();
-  socketApiNoticeOff = UserSocketClient.onApiNotice((notice: UserSocketApiNotice) => {
+  UserSocketClient.onApiNotice((notice) => {
     const message = UserSocketPageMessageStore.appendApiNotice(notice);
     UserSocketActivePageBridge.notifyActivePage(message);
   });
-
-  if (!socketLogoutListenerBound && typeof window !== 'undefined') {
-    socketLogoutListenerBound = true;
-    window.addEventListener('user-socket-logout', () => {
-      clearStoredAuthorization(USER_AUTH_STORAGE_KEY);
-      UserSocketPageMessageStore.clear();
-      redirectToLogin();
-    });
-  }
-
-  authTokenResponseInterceptorId = installAuthTokenResponseInterceptor(apiUser, {
-    authStorageKey: USER_AUTH_STORAGE_KEY,
-    onAuthorizationChanged: (authorization) => {
-      UserSocketClient.notifyAuthorizationChanged(authorization);
-    },
-  });
-  authResponseInterceptorId = installAuthRedirectInterceptor(apiUser, router, USER_LOGIN_ROUTE_NAME, {
-    authStorageKey: USER_AUTH_STORAGE_KEY,
-    invalidStatus: USER_AUTH_INVALID_HTTP_STATUS,
-  });
-  socketAuthResponseInterceptorId = apiUser.interceptors.response.use(
-    (response) => response,
-    (error: unknown) => {
-      if (isAxiosError(error) && error.response?.status === USER_AUTH_INVALID_HTTP_STATUS) {
-        UserSocketClient.broadcastLogout('http-401');
-      }
-      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
-    },
-  );
   app.config.globalProperties.$apiUser = apiUser;
 });
-
 export { apiUser };

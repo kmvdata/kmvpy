@@ -3,12 +3,14 @@ import axios, {
   AxiosHeaders,
   isAxiosError,
   type AxiosResponse,
+  type AxiosRequestConfig,
   type AxiosInstance,
   type InternalAxiosRequestConfig,
 } from 'axios';
 import type { Router } from 'vue-router';
 
 import packageJson from '../../package.json';
+import { browserStorage, normalizeToken, readLoginSession, sameSession } from 'src/network/realtime/session';
 import {
   ApiResponseError,
   getApiResponseMessage,
@@ -238,7 +240,7 @@ const getOrCreateDeviceId = () => {
   }
 
   const storageKey = '__PROJECT_NAME___device_id';
-  const storedDeviceId = normalizeClientHeaderValue(window.localStorage.getItem(storageKey));
+  const storedDeviceId = normalizeClientHeaderValue(browserStorage.read(storageKey));
   if (storedDeviceId) {
     return storedDeviceId;
   }
@@ -247,7 +249,7 @@ const getOrCreateDeviceId = () => {
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  window.localStorage.setItem(storageKey, generatedDeviceId);
+  browserStorage.write(storageKey, generatedDeviceId);
   return generatedDeviceId;
 };
 
@@ -289,61 +291,21 @@ const setHeader = (config: InternalAxiosRequestConfig, name: string, value: stri
   config.headers = headers;
 };
 
-const getStoredAuthorization = (storageKey = AUTH_STORAGE_KEY) => {
-  if (typeof window === 'undefined') {
-    return '';
-  }
-
-  return normalizeAuthorization(window.localStorage.getItem(storageKey));
-};
-
+const getStoredAuthorization = (storageKey = AUTH_STORAGE_KEY) => normalizeToken(browserStorage.read(storageKey));
 const getAuthorizationExpiresAtStorageKey = (storageKey: string) => `${storageKey}:expires-at`;
-
-const getStoredAuthorizationExpiresAt = (storageKey = AUTH_STORAGE_KEY) => {
-  if (typeof window === 'undefined') {
-    return '';
-  }
-
-  return window.localStorage.getItem(getAuthorizationExpiresAtStorageKey(storageKey))?.trim() || '';
-};
-
+const getStoredAuthorizationExpiresAt = (storageKey = AUTH_STORAGE_KEY) => browserStorage.read(getAuthorizationExpiresAtStorageKey(storageKey)) || '';
 const setStoredAuthorizationExpiresAt = (value: string, storageKey = AUTH_STORAGE_KEY) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  const expiresAt = value.trim();
-  const expiresAtStorageKey = getAuthorizationExpiresAtStorageKey(storageKey);
-  if (!/^\d+$/.test(expiresAt)) {
-    window.localStorage.removeItem(expiresAtStorageKey);
-    return;
-  }
-
-  window.localStorage.setItem(expiresAtStorageKey, expiresAt);
+  browserStorage.write(getAuthorizationExpiresAtStorageKey(storageKey), /^\d+$/.test(value) ? value : null);
 };
-
 const setStoredAuthorization = (value: string, storageKey = AUTH_STORAGE_KEY) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  const authorization = normalizeAuthorization(value);
-  window.localStorage.removeItem(getAuthorizationExpiresAtStorageKey(storageKey));
-  if (!authorization) {
-    window.localStorage.removeItem(storageKey);
-    return;
-  }
-
-  window.localStorage.setItem(storageKey, authorization);
+  browserStorage.write(storageKey, normalizeToken(value) || null);
+  const domain = storageKey.endsWith(':admin') ? 'admin' : 'user';
+  const session = readLoginSession(value, domain);
+  setStoredAuthorizationExpiresAt(session ? String(session.expiresAt / 1000) : '', storageKey);
 };
-
 const clearStoredAuthorization = (storageKey = AUTH_STORAGE_KEY) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.removeItem(storageKey);
-  window.localStorage.removeItem(getAuthorizationExpiresAtStorageKey(storageKey));
+  browserStorage.write(storageKey, null);
+  browserStorage.write(getAuthorizationExpiresAtStorageKey(storageKey), null);
 };
 
 interface ValidationErrorDetailItemLike {
@@ -400,17 +362,20 @@ export const postWithApiClient = async <TRequest, TResponse>(
   url: string,
   requestData: TRequest,
   fallbackMessage: string,
+  config?: AxiosRequestConfig,
 ): Promise<TResponse> => {
   try {
     const response: AxiosResponse<ApiResponse<TResponse>> = await apiClient.post(
       url,
       requestData,
+      config,
     );
     return unwrapApiResponse(response.data, { fallbackMessage });
   } catch (error) {
     if (error instanceof ApiResponseError) {
       throw error;
     }
+    if (isAxiosError(error)) throw error;
     throw new Error(extractRequestErrorMessage(error, fallbackMessage));
   }
 };
@@ -425,16 +390,19 @@ export const getWithApiClient = async <TResponse>(
   apiClient: AxiosInstance,
   url: string,
   fallbackMessage: string,
+  config?: AxiosRequestConfig,
 ): Promise<TResponse> => {
   try {
     const response: AxiosResponse<ApiResponse<TResponse>> = await apiClient.get(
       url,
+      config,
     );
     return unwrapApiResponse(response.data, { fallbackMessage });
   } catch (error) {
     if (error instanceof ApiResponseError) {
       throw error;
     }
+    if (isAxiosError(error)) throw error;
     throw new Error(extractRequestErrorMessage(error, fallbackMessage));
   }
 };
@@ -442,6 +410,8 @@ export const getWithApiClient = async <TResponse>(
 export const getApi = async <TResponse>(url: string, fallbackMessage: string): Promise<TResponse> =>
   getWithApiClient(api, url, fallbackMessage);
 
+const requestCredentials = new WeakMap<object, string>();
+export const requestAuthorization = (config: object | undefined) => config ? requestCredentials.get(config) ?? '' : '';
 const installApiRequestInterceptor = (apiClient: AxiosInstance, authStorageKey = AUTH_STORAGE_KEY) => {
   apiClient.interceptors.request.use(
     (config) => {
@@ -459,6 +429,7 @@ const installApiRequestInterceptor = (apiClient: AxiosInstance, authStorageKey =
         }
       }
 
+      requestCredentials.set(config, getHeader(config, 'Authorization') ?? '');
       const clientHeaders = getClientRequestHeaders();
       for (const headerName of CLIENT_HEADER_NAMES) {
         if (getHeader(config, headerName) === undefined) {
@@ -519,9 +490,16 @@ export const installAuthTokenResponseInterceptor = (
       getResponseHeader(response, AUTH_RENEW_TOKEN_TYPE_HEADER) || 'Bearer';
     const expiresAt = getResponseHeader(response, AUTH_RENEW_EXPIRES_AT_HEADER);
     const authorization = normalizeAuthorization(`${tokenType} ${token}`);
-    setStoredAuthorization(authorization, options.authStorageKey);
-    setStoredAuthorizationExpiresAt(expiresAt, options.authStorageKey);
-    options.onAuthorizationChanged?.(authorization, expiresAt);
+    const key = options.authStorageKey ?? AUTH_STORAGE_KEY;
+    const domain = key.endsWith(':admin') ? 'admin' : 'user';
+    const requestSession = readLoginSession(requestAuthorization(response.config), domain);
+    const current = readLoginSession(getStoredAuthorization(key), domain);
+    const next = readLoginSession(authorization, domain);
+    if (sameSession(requestSession, current) && sameSession(next, current) && next && current && next.expiresAt > current.expiresAt) {
+      setStoredAuthorization(authorization, key);
+      setStoredAuthorizationExpiresAt(expiresAt, key);
+      options.onAuthorizationChanged?.(authorization, expiresAt);
+    }
     return response;
   });
 
@@ -540,7 +518,9 @@ export const installAuthRedirectInterceptor = (
     (response) => response,
     (error: unknown) => {
       const invalidStatus = options.invalidStatus ?? AUTH_INVALID_HTTP_STATUS;
-      if (isAxiosError(error) && error.response?.status === invalidStatus) {
+      if (isAxiosError(error) && error.response?.status === invalidStatus &&
+          error.response.headers['x-auth-error'] === 'session_invalid' &&
+          requestAuthorization(error.config) === getStoredAuthorization(options.authStorageKey)) {
         clearStoredAuthorization(options.authStorageKey);
         const currentRoute = router.currentRoute.value;
         if (currentRoute.name !== loginRouteName) {

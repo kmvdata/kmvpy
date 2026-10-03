@@ -293,3 +293,8 @@ Python `>= 3.11`。生成项目默认围绕现代类型标注、async I/O 与 Py
 ### MySQL 是必须的吗？
 
 不是。MySQL 是可选依赖；项目也可以按需要使用 PostgreSQL、SQLite 或其他可接入的存储配置。
+
+
+## Web 实时基础设施
+
+多标签页连接、用户/管理会话隔离、页面恢复、Redis 保护策略和本机验收见 [Web 实时连接与恢复文档](docs/web-realtime.md)。

@@ -37,3 +37,8 @@ sudo apt update
 sudo apt install certbot python3-certbot-nginx -y
 sudo certbot --nginx -d www.example.com # 替换成目标域名
 ```
+
+
+## Web 实时基础设施
+
+多标签页连接、用户/管理会话隔离、页面恢复、Redis 保护策略和本机验收见 [Web 实时连接与恢复文档](../docs/web-realtime.md)。

@@ -9,6 +9,8 @@ from kmvpy.core.main.service.jwt_service import JwtUserInfo
 from __PROJECT_NAME__.common.dependencies.auth import auth_user
 from __PROJECT_NAME__.core.main.service.user.socket import UserSocketService
 
+from __PROJECT_NAME__.core.main.service.common.realtime import RealtimeService
+
 router = APIRouter(prefix="/api/user/socket", tags=["user_socket"])
 
 
@@ -35,6 +37,12 @@ async def api_pull_pending_socket_messages(
         page=page,
         size=size,
     )
+
+
+@router.post('/session', summary='校验当前登录会话；续签由现有 HTTP 中间件返回')
+async def api_validate_session(info: JwtUserInfo = Depends(auth_user)):
+    from kmvpy.common.response import ApiResponse
+    return ApiResponse.success_response(data={'valid': True})
 
 
 def register_user_socket_handlers(socketio: Any | None = None) -> None:
@@ -65,3 +73,11 @@ def register_user_socket_handlers(socketio: Any | None = None) -> None:
     @socket_manager.on(event="disconnect", namespace=UserSocketService.SOCKET_NAMESPACE)
     async def disconnect(sid: str):
         await UserSocketService.handle_socket_connection(event="disconnect", sid=sid)
+
+    @socket_manager.on(event='auth_update', namespace=UserSocketService.SOCKET_NAMESPACE)
+    async def auth_update(sid: str, data):
+        return await UserSocketService.update_authorization(sid, data)
+
+    @socket_manager.on(event='subscription', namespace=UserSocketService.SOCKET_NAMESPACE)
+    async def subscription(sid: str, data):
+        return await RealtimeService.subscription('user', sid, data)

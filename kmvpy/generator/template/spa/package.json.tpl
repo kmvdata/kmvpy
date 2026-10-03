@@ -11,7 +11,8 @@
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "dev": "quasar dev",
     "build": "quasar build",
-    "postinstall": "quasar prepare"
+    "postinstall": "quasar prepare",
+    "test": "bun test tests/realtime.test.js"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.4",

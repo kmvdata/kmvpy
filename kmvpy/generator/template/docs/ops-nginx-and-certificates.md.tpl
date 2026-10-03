@@ -120,3 +120,10 @@ openssl s_client -connect api.example.com:443 -servername api.example.com </dev/
 | 浏览器访问仍警告 | 自签需信任证书本身；多人环境建议 CA 方案 |
 | Socket.IO 连不上 | 确认 API 反代保留 WebSocket upgrade、路径为 `/ws/socket.io` |
 | 跨域失败 | 检查 `cors_allow_origins` 与浏览器实际 origin 一致 |
+
+
+## 实时连接部署约束
+
+Socket.IO namespace 为 `/ws`、`/admin_ws`，底层 path 均为 `/ws/socket.io`。两个域使用独立传输连接。当前 kmvpy 模板代理读写超时为 300s，大于 Engine.IO 的 25s ping + 20s timeout。
+
+现有配置为 1 worker。增加 worker 或节点且保留 polling 时，必须保证同一 Engine.IO SID 的 polling/upgrade 请求进入同一处理节点；Redis 通知广播不能替代此亲和性。Nginx 模板检查不等于生产代理验收，本轮未部署或修改运行中代理。完整机制、配置和本机证据见 [Web 实时连接与恢复](web-realtime.md)。

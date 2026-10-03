@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from 'axios';
 import { postUserApi } from '../../../boot/axios_user';
 import type {
   UserWorkTicketCreateReq,
@@ -17,19 +18,21 @@ export class ApiUserWorkTicket {
     );
   }
 
-  static list(requestData: UserWorkTicketListReq): Promise<UserWorkTicketListRes> {
+  static list(requestData: UserWorkTicketListReq, config?: AxiosRequestConfig): Promise<UserWorkTicketListRes> {
     return postUserApi<UserWorkTicketListReq, UserWorkTicketListRes>(
       '/api/user/work_ticket/list',
       requestData,
       '获取工单列表失败',
+      config,
     );
   }
 
-  static detail(requestData: UserWorkTicketDetailReq): Promise<UserWorkTicketDetailRes> {
+  static detail(requestData: UserWorkTicketDetailReq, config?: AxiosRequestConfig): Promise<UserWorkTicketDetailRes> {
     return postUserApi<UserWorkTicketDetailReq, UserWorkTicketDetailRes>(
       '/api/user/work_ticket/detail',
       requestData,
       '获取工单详情失败',
+      config,
     );
   }
 

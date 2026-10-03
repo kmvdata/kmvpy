@@ -1,9 +1,22 @@
+from typing import Literal
+from pydantic import BaseModel, Field
 from kmvpy.common.conf import BaseConfig
 from kmvpy.common.kmv import kosmos
 
 
+class RealtimeProtectionConfig(BaseModel):
+    mode: Literal['off', 'observe', 'enforce'] = 'observe'
+    failure: Literal['allow', 'deny'] = 'allow'
+    connections: int = Field(default=8, ge=1)
+    attempts_per_minute: int = Field(default=60, ge=1)
+    subscriptions: int = Field(default=200, ge=1)
+    subscription_ops_per_minute: int = Field(default=240, ge=1)
+    http_per_minute: int = Field(default=300, ge=1)
+    ttl_seconds: int = Field(default=90, ge=3)
+
+
 class AppConfig(BaseConfig):  # pyright: ignore[reportUndefinedVariable]
-    pass
+    realtime_protection: RealtimeProtectionConfig = Field(default_factory=RealtimeProtectionConfig)
 
 
 def get_app_config() -> AppConfig:

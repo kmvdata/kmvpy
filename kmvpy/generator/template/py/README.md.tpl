@@ -57,3 +57,8 @@ cd __PY_PROJECT_NAME__
 source .venv/bin/activate
 python app/run.py
 ```
+
+
+## Web 实时基础设施
+
+多标签页连接、用户/管理会话隔离、页面恢复、Redis 保护策略和本机验收见 [Web 实时连接与恢复文档](../docs/web-realtime.md)。

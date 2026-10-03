@@ -1,3 +1,4 @@
+import { UserSocketClient } from './user_socket';
 import { UserSocketPageMessageStore } from './page_message_store';
 import type {
   UserSocketPageApiNoticeMessage,
@@ -29,6 +30,8 @@ const createHandlerId = () =>
   `socket-page-handler:${Date.now()}:${Math.random().toString(16).slice(2)}`;
 
 class UserSocketActivePageBridgeManager {
+  private running = false;
+  private pending = false;
   private readonly handlers: ActivePageHandlerEntry[] = [];
 
   register(handler: UserSocketPageMessageHandler) {
@@ -47,6 +50,7 @@ class UserSocketActivePageBridgeManager {
   }
 
   notifyActivePage(latest: UserSocketPageMessage | null = null) {
+    if (!UserSocketClient.eligible()) return;
     const entry = this.handlers[this.handlers.length - 1];
     if (!entry) {
       return;
@@ -57,6 +61,7 @@ class UserSocketActivePageBridgeManager {
       return;
     }
 
+    if (this.running) { this.pending = true; return; }
     this.dispatch(entry.handler, latest, messages);
   }
 
@@ -91,17 +96,16 @@ class UserSocketActivePageBridgeManager {
       },
     };
 
-    try {
-      const result = handler(context);
-      if (result instanceof Promise) {
-        result.catch((error: unknown) => {
-          console.warn('[UserSocket] 激活页消息处理失败', error);
-        });
-      }
-    } catch (error) {
-      console.warn('[UserSocket] 激活页消息处理失败', error);
-    }
+    this.running = true;
+    void Promise.resolve().then(() => handler(context)).catch(() => {
+      console.warn('[Socket] page consumer failed');
+    }).finally(() => {
+      this.running = false;
+      if (this.pending) { this.pending = false; this.flushActivePage(); }
+    });
   }
 }
 
 export const UserSocketActivePageBridge = new UserSocketActivePageBridgeManager();
+
+UserSocketClient.onEligibilityChange(() => UserSocketActivePageBridge.flushActivePage());

@@ -19,6 +19,7 @@ from sqlalchemy import func, select
 from __PROJECT_NAME__.common.infra.storage.default_storage import DefaultStorage
 from __PROJECT_NAME__.common.infra.orm.user_socket_message import UserSocketMessage
 from __PROJECT_NAME__.core.main.hub.user_op import UserOpHub
+from __PROJECT_NAME__.core.main.hub.realtime import RealtimeHub
 
 
 @dataclass(frozen=True)
@@ -316,8 +317,11 @@ class UserSocketService:
                 delay = max(0, session.access_expires_at - int(time.time()))
                 if delay > 0:
                     await asyncio.sleep(delay)
+                if UserSocketService._sid_to_session.get(session.sid) is not session:
+                    return
                 raw_server = UserSocketService._raw_socketio_server()
                 if raw_server is not None:
+                    await raw_server.emit('auth_status', {'kind': 'token_expired'}, to=session.sid, namespace=UserSocketService.SOCKET_NAMESPACE)
                     await raw_server.disconnect(
                         session.sid,
                         namespace=UserSocketService.SOCKET_NAMESPACE,
@@ -358,6 +362,7 @@ class UserSocketService:
             )
         except Exception as exc:
             logger.warning("用户 socket 加入 room 失败，sid=%s, user_kid=%s", sid, user_kid, exc_info=exc)
+            raise
 
     @staticmethod
     async def _leave_user_room(sid: str, user_kid: int) -> None:
@@ -501,30 +506,41 @@ class UserSocketService:
             logger.warning("用户 socket 连接缺少 token，sid=%s", sid)
             return False
 
-        try:
-            user_info = await UserSocketService._authenticate_socket_token(token)
-        except Exception as exc:
-            logger.warning("用户 socket 鉴权失败，sid=%s", sid, exc_info=exc)
-            return False
+        user_info = await RealtimeHub.connect('user', sid, token, environ, auth)
 
         session = UserSocketSession(
             sid=sid,
             user_kid=int(user_info.kid),
             access_expires_at=int(getattr(user_info, "expires_at", 0) or 0),
         )
-        UserSocketService._add_session(session)
-        UserSocketService._schedule_socket_token_expiry(session)
-        await UserSocketService._enter_user_room(sid=sid, user_kid=session.user_kid)
-        await UserSocketService._mark_user_socket_online(session)
-        logger.info("用户 socket 鉴权成功，sid=%s, user_kid=%s", sid, session.user_kid)
-        await UserSocketService._on_user_socket_authenticated(
-            user_kid=session.user_kid,
-            sid=sid,
-        )
+        try:
+            UserSocketService._add_session(session)
+            UserSocketService._schedule_socket_token_expiry(session)
+            await UserSocketService._enter_user_room(sid=sid, user_kid=session.user_kid)
+            await UserSocketService._mark_user_socket_online(session)
+            logger.info("用户 socket 鉴权成功，sid=%s, user_kid=%s", sid, session.user_kid)
+            await UserSocketService._on_user_socket_authenticated(
+                user_kid=session.user_kid,
+                sid=sid,
+            )
+        except BaseException:
+            entry = RealtimeHub.sessions.get(('user', sid))
+            if entry is not None:
+                await entry.guard.metric('initialization_failures')
+            UserSocketService._remove_session(sid)
+            await RealtimeHub.disconnect('user', sid)
+            raise
+
+        entry = RealtimeHub.sessions.get(('user', sid))
+        if entry is not None:
+            await entry.guard.metric('connections_accepted')
+            if entry.recovery:
+                await entry.guard.metric('recovery_success')
         return True
 
     @staticmethod
     async def _handle_disconnect(sid: str) -> None:
+        await RealtimeHub.disconnect('user', sid)
         session = UserSocketService._remove_session(sid)
         if session is None:
             logger.info("未知用户 socket 断开，sid=%s", sid)
@@ -673,3 +689,14 @@ class UserSocketService:
             if sent_count:
                 await session.flush()
         return sent_count
+
+    @staticmethod
+    async def update_authorization(sid: str, data):
+        result = await RealtimeHub.update('user', sid, data)
+        if result.get('ok') and sid in UserSocketService._sid_to_session:
+            old = UserSocketService._sid_to_session[sid]
+            new = UserSocketSession(sid=old.sid, user_kid=old.user_kid,
+                access_expires_at=result['expires_at'])
+            UserSocketService._sid_to_session[sid] = new
+            UserSocketService._schedule_socket_token_expiry(new)
+        return result

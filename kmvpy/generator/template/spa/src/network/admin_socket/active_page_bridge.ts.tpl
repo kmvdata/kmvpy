@@ -1,3 +1,4 @@
+import { AdminSocketClient } from './admin_socket';
 import { AdminSocketPageMessageStore } from './page_message_store';
 import type {
   AdminSocketPageApiNoticeMessage,
@@ -29,6 +30,8 @@ const createHandlerId = () =>
   `admin-socket-page-handler:${Date.now()}:${Math.random().toString(16).slice(2)}`;
 
 class AdminSocketActivePageBridgeManager {
+  private running = false;
+  private pending = false;
   private readonly handlers: ActivePageHandlerEntry[] = [];
 
   register(handler: AdminSocketPageMessageHandler) {
@@ -47,6 +50,7 @@ class AdminSocketActivePageBridgeManager {
   }
 
   notifyActivePage(latest: AdminSocketPageMessage | null = null) {
+    if (!AdminSocketClient.eligible()) return;
     const entry = this.handlers[this.handlers.length - 1];
     if (!entry) {
       return;
@@ -57,6 +61,7 @@ class AdminSocketActivePageBridgeManager {
       return;
     }
 
+    if (this.running) { this.pending = true; return; }
     this.dispatch(entry.handler, latest, messages);
   }
 
@@ -91,17 +96,16 @@ class AdminSocketActivePageBridgeManager {
       },
     };
 
-    try {
-      const result = handler(context);
-      if (result instanceof Promise) {
-        result.catch((error: unknown) => {
-          console.warn('[AdminSocket] 激活页消息处理失败', error);
-        });
-      }
-    } catch (error) {
-      console.warn('[AdminSocket] 激活页消息处理失败', error);
-    }
+    this.running = true;
+    void Promise.resolve().then(() => handler(context)).catch(() => {
+      console.warn('[Socket] page consumer failed');
+    }).finally(() => {
+      this.running = false;
+      if (this.pending) { this.pending = false; this.flushActivePage(); }
+    });
   }
 }
 
 export const AdminSocketActivePageBridge = new AdminSocketActivePageBridgeManager();
+
+AdminSocketClient.onEligibilityChange(() => AdminSocketActivePageBridge.flushActivePage());

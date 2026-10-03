@@ -11,21 +11,13 @@ import { getStoredAdminAuthorization } from 'src/boot/axios_admin';
 import { getStoredUserAuthorization } from 'src/boot/axios_user';
 
 import routes from './routes';
+import { routeAuthDomain, pageLifecycle } from 'src/network/realtime/lifecycle';
 
 const LEGACY_ADMIN_PAGE_HASH_PATTERN = /^#p\d+$/;
 
 const getRequiredLoginRouteName = (to: RouteLocationNormalized) => {
-  const requiresAdminAuth = to.matched.some((route) => route.meta.requiresAdminAuth);
-  if (requiresAdminAuth) {
-    return 'admin-login';
-  }
-
-  const requiresAuth = to.matched.some((route) => route.meta.requiresAuth);
-  if (requiresAuth) {
-    return 'login';
-  }
-
-  return '';
+  const domain = routeAuthDomain(to);
+  return domain === 'admin' ? 'admin-login' : domain === 'user' ? 'login' : '';
 };
 
 export default defineRouter(function () {
@@ -70,5 +62,6 @@ export default defineRouter(function () {
     };
   });
 
+  pageLifecycle.install(router);
   return router;
 });

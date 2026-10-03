@@ -45,7 +45,26 @@ def gen_asgi_app(config_path: Annotated[Optional[str], "工程配置对象或配
     UserSocketService.require_redis_for_production(config)
     install_kmvpy_auth_session_service()
     app = init_asgi_app(config, routers)
+    from __PROJECT_NAME__.common.infra.realtime_http import RealtimeHttpMetrics
+    from starlette.middleware.cors import CORSMiddleware
+    app.add_middleware(RealtimeHttpMetrics)
+    # Extend the existing CORS contract, including the development regex variant.
+    for middleware in app.user_middleware:
+        if middleware.cls is CORSMiddleware:
+            middleware.kwargs['expose_headers'] = list(dict.fromkeys([
+                *middleware.kwargs.get('expose_headers', []), 'X-Auth-Error', 'X-Auth-Role', 'Retry-After']))
     _align_socketio_engineio_path_with_mount()
+    # Socket.IO runs outside FastAPI's CORS middleware. Apply the same origin policy.
+    raw_socket = UserSocketService._raw_socketio_server()
+    if raw_socket is not None:
+        origins = list(getattr(config.service, 'cors_allow_origins', None) or [])
+        local_development = config.general.debug or config.general.env in ('dev', 'development', 'develop', 'local')
+        if local_development:
+            import re
+            raw_socket.eio.cors_allowed_origins = lambda origin, environ=None: origin in origins or bool(
+                re.fullmatch(r'https?://(localhost|127\.0\.0\.1)(:\d+)?', origin or ''))
+        else:
+            raw_socket.eio.cors_allowed_origins = origins or None
     UserSocketService.configure_distributed_socket_manager(config)
     register_user_socket_handlers()
     register_admin_socket_handlers()
@@ -58,7 +77,13 @@ def gen_asgi_app(config_path: Annotated[Optional[str], "工程配置对象或配
             await init_default_admin_if_needed(config)
         async with _existing_lifespan(app_):
             register_app_schedule_jobs()
-            yield
+            try:
+                yield
+            finally:
+                from __PROJECT_NAME__.core.main.service.common.realtime import RealtimeService
+                from __PROJECT_NAME__.core.main.hub.realtime import RealtimeHub
+                for domain, sid in list(RealtimeHub.sessions):
+                    await RealtimeService.disconnect(domain, sid)
 
     app.router.lifespan_context = _lifespan
     return app

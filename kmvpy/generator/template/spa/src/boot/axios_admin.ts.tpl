@@ -1,141 +1,125 @@
-import { defineBoot } from '#q-app/wrappers';
-import { isAxiosError, type AxiosInstance } from 'axios';
-import type { Router } from 'vue-router';
-
+import { isSessionValidationResult } from "src/network/realtime/session";
+import { defineBoot } from "#q-app/wrappers";
+import {
+  isAxiosError,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+} from "axios";
+import type { Router } from "vue-router";
 import {
   AUTH_STORAGE_KEY,
   createApiClient,
   clearStoredAuthorization,
   getStoredAuthorization,
   getStoredAuthorizationExpiresAt,
-  getWithApiClient,
-  installAuthTokenResponseInterceptor,
   postWithApiClient,
+  getWithApiClient,
   setStoredAuthorization,
-} from './axios';
+  installAuthTokenResponseInterceptor,
+  requestAuthorization,
+} from "./axios";
 import {
-  AdminSocketActivePageBridge,
   AdminSocketClient,
   AdminSocketPageMessageStore,
-} from 'src/network/admin_socket';
-import type { AdminSocketApiNotice } from 'src/network/admin_socket';
+  AdminSocketActivePageBridge,
+} from "src/network/admin_socket";
+import { SessionValidationError } from "src/network/realtime/manager";
+import { routeAuthDomain } from "src/network/realtime/lifecycle";
 
-declare module 'vue' {
+declare module "vue" {
   interface ComponentCustomProperties {
     $apiAdmin: AxiosInstance;
   }
 }
-
 export const ADMIN_AUTH_STORAGE_KEY = `${AUTH_STORAGE_KEY}:admin`;
-const ADMIN_AUTH_INVALID_HTTP_STATUS = 401;
-const ADMIN_LOGIN_ROUTE_NAME = 'admin-login';
-
-const apiAdmin = createApiClient({ authStorageKey: ADMIN_AUTH_STORAGE_KEY });
-let adminRouter: Router | null = null;
-let pendingAdminLoginRedirect = false;
-let authTokenResponseInterceptorId: number | null = null;
-let socketApiNoticeOff: (() => void) | null = null;
-let socketLogoutListenerBound = false;
-
-const clearStoredAdminAuthorizationLocally = () => {
-  clearStoredAuthorization(ADMIN_AUTH_STORAGE_KEY);
-  AdminSocketPageMessageStore.clear();
-};
-
-export const getStoredAdminAuthorization = () => getStoredAuthorization(ADMIN_AUTH_STORAGE_KEY);
+const key = ADMIN_AUTH_STORAGE_KEY;
+const apiAdmin = createApiClient({ authStorageKey: key });
+let authRouter: Router | null = null;
+export const getStoredAdminAuthorization = () => getStoredAuthorization(key);
 export const getStoredAdminAuthorizationExpiresAt = () =>
-  getStoredAuthorizationExpiresAt(ADMIN_AUTH_STORAGE_KEY);
+  getStoredAuthorizationExpiresAt(key);
 export const setStoredAdminAuthorization = (value: string) => {
-  setStoredAuthorization(value, ADMIN_AUTH_STORAGE_KEY);
-  AdminSocketClient.notifyAuthorizationChanged(value);
+  setStoredAuthorization(value, key);
+  AdminSocketClient.notifyAuthorizationChanged();
 };
 export const clearStoredAdminAuthorization = () => {
-  clearStoredAdminAuthorizationLocally();
-  AdminSocketClient.broadcastLogout('manual');
+  AdminSocketClient.broadcastLogout("manual");
 };
-
-const redirectToAdminLogin = () => {
-  if (!adminRouter) {
-    pendingAdminLoginRedirect = true;
-    return;
-  }
-
-  clearStoredAdminAuthorizationLocally();
-  pendingAdminLoginRedirect = false;
-
-  const currentRoute = adminRouter.currentRoute.value;
-  if (currentRoute.name === ADMIN_LOGIN_ROUTE_NAME) {
-    return;
-  }
-
-  const redirect = currentRoute.fullPath || undefined;
-  const routeTarget = redirect
-    ? { name: ADMIN_LOGIN_ROUTE_NAME, query: { redirect } }
-    : { name: ADMIN_LOGIN_ROUTE_NAME };
-  void adminRouter.replace(routeTarget).catch(() => undefined);
+const logout = () => {
+  clearStoredAuthorization(key);
+  AdminSocketPageMessageStore.clear();
+  const route = authRouter?.currentRoute.value;
+  if (route && routeAuthDomain(route) === "admin")
+    void authRouter?.replace({
+      name: "admin-login",
+      query: { redirect: route.fullPath },
+    });
 };
-
 apiAdmin.interceptors.response.use(
-  (response) => response,
+  (r) => r,
   (error: unknown) => {
-    if (isAxiosError(error) && error.response?.status === ADMIN_AUTH_INVALID_HTTP_STATUS) {
-      AdminSocketClient.broadcastLogout('http-401');
-      redirectToAdminLogin();
+    if (
+      isAxiosError(error) &&
+      error.response?.status === 401 &&
+      error.response.headers["x-auth-error"] === "session_invalid" &&
+      error.response.headers["x-auth-role"] === "admin" &&
+      requestAuthorization(error.config) === getStoredAuthorization(key)
+    ) {
+      AdminSocketClient.broadcastLogout("http-401");
     }
-
-    return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    return Promise.reject(
+      error instanceof Error ? error : new Error(String(error)),
+    );
   },
 );
-
-export const postAdminApi = async <TRequest, TResponse>(
+installAuthTokenResponseInterceptor(apiAdmin, {
+  authStorageKey: key,
+  onAuthorizationChanged: () => AdminSocketClient.notifyAuthorizationChanged(),
+});
+export const postAdminApi = <Q, R>(
   url: string,
-  requestData: TRequest,
-  fallbackMessage: string,
-): Promise<TResponse> => postWithApiClient(apiAdmin, url, requestData, fallbackMessage);
-
-export const getAdminApi = async <TResponse>(
+  data: Q,
+  fallback: string,
+  config?: AxiosRequestConfig,
+): Promise<R> => postWithApiClient(apiAdmin, url, data, fallback, config);
+export const getAdminApi = <R>(
   url: string,
-  fallbackMessage: string,
-): Promise<TResponse> => getWithApiClient(apiAdmin, url, fallbackMessage);
-
+  fallback: string,
+  config?: AxiosRequestConfig,
+): Promise<R> => getWithApiClient(apiAdmin, url, fallback, config);
 export default defineBoot(({ app, router }) => {
-  adminRouter = router;
-  if (pendingAdminLoginRedirect) {
-    redirectToAdminLogin();
-  }
-  if (authTokenResponseInterceptorId !== null) {
-    apiAdmin.interceptors.response.eject(authTokenResponseInterceptorId);
-  }
+  authRouter = router;
   AdminSocketClient.configure({
     getAuthorization: getStoredAdminAuthorization,
-    onLogout: () => {
-      clearStoredAdminAuthorizationLocally();
-      redirectToAdminLogin();
+    onLogout: logout,
+    onSessionChanged: () => AdminSocketPageMessageStore.clear(),
+    validate: async (signal) => {
+      try {
+        const response = await apiAdmin.post<unknown>(
+          "/api/admin/socket/session",
+          {},
+          { signal, timeout: 5000 },
+        );
+        if (!isSessionValidationResult(response.data))
+          throw new SessionValidationError("temporary");
+      } catch (error) {
+        if (
+          isAxiosError(error) &&
+          error.response?.status === 401 &&
+          error.response.headers["x-auth-error"] === "session_invalid" &&
+          error.response.headers["x-auth-role"] === "admin" &&
+          requestAuthorization(error.config) === getStoredAuthorization(key)
+        )
+          throw new SessionValidationError("session_invalid");
+        throw new SessionValidationError("temporary");
+      }
     },
   });
   AdminSocketClient.start();
-  socketApiNoticeOff?.();
-  socketApiNoticeOff = AdminSocketClient.onApiNotice((notice: AdminSocketApiNotice) => {
+  AdminSocketClient.onApiNotice((notice) => {
     const message = AdminSocketPageMessageStore.appendApiNotice(notice);
     AdminSocketActivePageBridge.notifyActivePage(message);
   });
-
-  if (!socketLogoutListenerBound && typeof window !== 'undefined') {
-    socketLogoutListenerBound = true;
-    window.addEventListener('admin-socket-logout', () => {
-      clearStoredAdminAuthorizationLocally();
-      redirectToAdminLogin();
-    });
-  }
-
-  authTokenResponseInterceptorId = installAuthTokenResponseInterceptor(apiAdmin, {
-    authStorageKey: ADMIN_AUTH_STORAGE_KEY,
-    onAuthorizationChanged: (authorization: string) => {
-      AdminSocketClient.notifyAuthorizationChanged(authorization);
-    },
-  });
-
   app.config.globalProperties.$apiAdmin = apiAdmin;
 });
-
 export { apiAdmin };

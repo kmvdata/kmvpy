@@ -60,7 +60,12 @@ def _extract_jwt_user_info_from_payload(jwt_payload) -> JwtUserInfo | None:
                 continue
     if user_type is None:
         return None
-    return JwtUserInfo(kid=user_kid, user_type=user_type)
+    def claim(name, default):
+        return jwt_payload.get(name, default) if isinstance(jwt_payload, dict) else getattr(jwt_payload, name, default)
+    return JwtUserInfo(kid=user_kid, user_type=user_type, sid=str(claim('sid', '')),
+                       auth_role=str(claim('auth_role', claim('role', ''))),
+                       issued_at=int(claim('issued_at', claim('iat', 0)) or 0),
+                       expires_at=int(claim('expires_at', claim('exp', 0)) or 0))
 
 
 def _authorization_invalid_detail() -> dict[str, int | str]:
@@ -76,7 +81,7 @@ def _authorization_invalid_detail() -> dict[str, int | str]:
 
 def _raise_authorization_invalid(auth_role: str) -> NoReturn:
     # 鉴权失败属于 HTTP 协议层状态；业务异常仍通过 ApiResponse.code 表达。
-    headers = {"WWW-Authenticate": "Bearer", "X-Auth-Role": auth_role}
+    headers = {"WWW-Authenticate": "Bearer", "X-Auth-Role": auth_role, "X-Auth-Error": "session_invalid"}
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=_authorization_invalid_detail(),
@@ -100,6 +105,7 @@ async def _auth_jwt(
                 normalized_user_info is not None
                 and normalized_user_info.user_type == int(expected_user_type)
             ):
+                await _protect_http_request(request, auth_role, normalized_user_info)
                 return normalized_user_info
 
     authorization = request.headers.get("Authorization", "").strip()
@@ -117,7 +123,9 @@ async def _auth_jwt(
             auth_role=auth_role,
             token=normalized_token,
         )
-    except HTTPException:
+    except HTTPException as auth_error:
+        if auth_error.status_code >= 500:
+            raise
         try:
             recovered = await AuthSessionService.recover_expired_access_token(
                 request,
@@ -131,6 +139,10 @@ async def _auth_jwt(
             if not isinstance(candidate, dict):
                 _raise_authorization_invalid(auth_role)
             payload = candidate["payload"]
+        except HTTPException as exc:
+            if exc.status_code >= 500:
+                raise
+            _raise_authorization_invalid(auth_role)
         except Exception as exc:
             logger.warning(
                 "恢复过期登录信息失败，auth_role=%s",
@@ -151,6 +163,7 @@ async def _auth_jwt(
         _raise_authorization_invalid(auth_role)
 
     if user_info.user_type == int(expected_user_type):
+        await _protect_http_request(request, auth_role, user_info)
         return user_info
     _raise_authorization_invalid(auth_role)
 
@@ -179,3 +192,12 @@ async def auth_admin(
         auth_role="admin",
         expected_user_type=UserType.ADMIN,
     )
+
+
+async def _protect_http_request(request, domain, info):
+    from __PROJECT_NAME__.core.main.service.common.realtime import RealtimeService
+    if getattr(request.state, 'realtime_guard', None) is None:
+        guard, allowed = await RealtimeService.http_request(domain, info)
+        request.state.realtime_guard = guard
+        if not allowed:
+            raise HTTPException(429, detail={'kind': 'rate_limited'}, headers={'Retry-After': '60'})

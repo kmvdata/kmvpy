@@ -273,6 +273,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageRefresh } from 'src/composables/usePageRefresh';
 import { useQuasar } from 'quasar';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -425,39 +426,26 @@ const clearSelection = () => {
   syncQueryKid(null);
 };
 
-const loadList = async () => {
-  listLoading.value = true;
-  listError.value = '';
-  try {
-    const res = await ApiUserWorkTicket.list({
-      page: page.value,
-      size: pageSize,
+const loadList = usePageRefresh('user', () => JSON.stringify(['work-ticket-list', page.value, filterStatus.value]), {
+  read: async ({ signal }) => {
+    listLoading.value = true; listError.value = '';
+    try { return await ApiUserWorkTicket.list({
+      page: page.value, size: pageSize,
       status: filterStatus.value === null ? null : (filterStatus.value as 0 | 1 | 2 | 3 | 4),
-    });
-    tickets.value = res.items;
-    total.value = res.total;
-  } catch (e) {
-    listError.value = e instanceof Error ? e.message : t('workTickets.listFailed');
-  } finally {
-    listLoading.value = false;
-  }
-};
-
-const loadDetail = async () => {
-  if (!selectedKid.value) return;
-  detailLoading.value = true;
-  try {
-    detail.value = await ApiUserWorkTicket.detail({ kid: selectedKid.value });
-    await scrollChatToBottom();
-  } catch (e) {
-    $q.notify({
-      type: 'negative',
-      message: e instanceof Error ? e.message : t('workTickets.detailFailed'),
-    });
-  } finally {
-    detailLoading.value = false;
-  }
-};
+    }, { signal }); } finally { listLoading.value = false; }
+  },
+  apply: res => { tickets.value = res.items; total.value = res.total; },
+  error: e => { listError.value = e instanceof Error ? e.message : t('workTickets.listFailed'); },
+});
+const loadDetail = usePageRefresh('user', () => selectedKid.value || '', {
+  read: async ({ resource, signal }) => {
+    detailLoading.value = true;
+    try { return await ApiUserWorkTicket.detail({ kid: resource }, { signal }); }
+    finally { detailLoading.value = false; }
+  },
+  apply: res => { detail.value = res; void scrollChatToBottom(); },
+  error: e => { $q.notify({ type: 'negative', message: e instanceof Error ? e.message : t('workTickets.detailFailed') }); },
+});
 
 const onPageChange = () => {
   void loadList();
@@ -555,7 +543,7 @@ const submitCreate = async () => {
     createOpen.value = false;
     resetCreate();
     $q.notify({ type: 'positive', message: t('workTickets.created') });
-    await loadList();
+    loadList();
     selectTicket(res.kid);
   } catch (e) {
     $q.notify({
@@ -601,8 +589,8 @@ onSocketPageMessages((ctx) => {
   ctx.removeConsumed(workTicketNotices);
 });
 
-onMounted(async () => {
-  await loadList();
+onMounted(() => {
+  loadList();
   const qkid = route.query.kid;
   if (typeof qkid === 'string' && qkid) {
     selectTicket(qkid);
