@@ -11,7 +11,7 @@ BIU_DEPLOY_USER="__PROJECT_NAME__"
 # 示例: "/home/__PROJECT_NAME__/__PROJECT_NAME___dist"
 BIU_DEPLOY_DIST="/home/__PROJECT_NAME__/__PROJECT_NAME___dist"
 
-# BIU_DEPLOY_CONDA_ENV：发布时使用的 conda 环境名（与 deploy.sh 走 conda 分支时 biu 注入的 CONDA_ENV 一致；deploy.sh 内不设默认值）。
+# BIU_DEPLOY_CONDA_ENV：生产唯一支持的 Conda 环境名，由 biu 注入 CONDA_ENV；本地使用当前激活的 Conda。
 # - biu deploy py 在远程执行前会 export CONDA_ENV 为本值（本机已 export CONDA_ENV 则优先）；
 # - biu deploy py --rotate-jwt-keys 会由 deploy.sh 在本环境中安装 wheel 后、启动服务前执行 JWT 密钥对轮换；
 # - biu conda create <仅 Python 版本> 时创建的 -n 环境名也是本值。
@@ -25,8 +25,8 @@ BIU_DEPLOY_CONDA_ENV='kmvpy'
 # - SPA root 使用 BIU_DEPLOY 或脚本顶部 HOST/USER/DIST 推导出的远程基础目录 + /spa。
 # 也可临时覆盖: BIU_API_HOST=https://api.example.com BIU_SPA_HOST=https://www.example.com biu nginx
 # -----------------------------------------------------------------------------
-BIU_API_HOST=""
-BIU_SPA_HOST=""
+# BIU_API_HOST="https://api.example.com"
+# BIU_SPA_HOST="https://www.example.com"
 # Multipart 请求还包含边界和头部，网关需比业务文件上限多预留少量空间。
 BIU_API_CLIENT_MAX_BODY_SIZE="51m"
 
@@ -65,10 +65,10 @@ BIU_DEPLOY_DEFAULT="${BIU_DEPLOY_USER}@${BIU_DEPLOY_HOST_DEFAULT}:${BIU_DEPLOY_D
 #   biu --rotate-jwt-keys       轮换本地 develop/config.yaml 的 user/admin JWT 密钥对
 #   biu deploy                  先构建 py、spa；全部构建成功后部署 spa，再部署 py
 #                               可选 --no-deps / --update-config / --rotate-jwt-keys
-#   biu deploy spa              构建 SPA，再上传并替换远端 spa
-#   biu deploy py               构建 Python wheel，再上传并远端安装/重启服务
+#                               不加 --update-config 时保留远端 config.yaml；加该参数时先备份旧配置，再覆盖，最后安装/重启
 #
 #   biu -h | --help             显示本说明
+#   biu check-python            仅核对当前 Conda 解释器，不构建、不连接服务器
 #
 #   biu conda create <Python版本>
 #                               环境名固定为脚本顶部 BIU_DEPLOY_CONDA_ENV（与 deploy 一致）；远程：有 conda 则用；无则装 Miniconda3；
@@ -78,10 +78,16 @@ BIU_DEPLOY_DEFAULT="${BIU_DEPLOY_USER}@${BIU_DEPLOY_HOST_DEFAULT}:${BIU_DEPLOY_D
 #
 #   biu deploy py               构建 Python wheel，上传本地 .whl 与 release/deploy.sh 到远程并执行（重新部署/装 wheel 后重启服务）
 #                               可选 --no-deps / --update-config / --rotate-jwt-keys
+#                               不加 --update-config 时保留远端 config.yaml
 #   biu deploy py --update-config
-#                               先用本地 __PY_PROJECT_NAME__/app/etc/release/config.yaml 覆盖远程 <部署目标>/py/config.yaml
+#                               先备份已有远端配置至 <部署目标>/py/backup/config.yaml.<时间戳>.bak（失败即中止），
+#                               再用本地 __PY_PROJECT_NAME__/app/etc/release/config.yaml 覆盖远端 py/config.yaml，然后安装/重启
 #   biu deploy py --rotate-jwt-keys
 #                               deploy.sh 激活 conda 并安装 wheel 后、启动服务前轮换 JWT 密钥对
+#   biu deploy spa              构建 SPA，再上传并替换远端 spa；不支持额外参数（包括 --update-config）
+#   biu deploy config           仅将本地 __PY_PROJECT_NAME__/app/etc/release/config.yaml 推到远端 py/config.yaml；不支持额外参数
+#                               覆盖前备份已有配置至 py/backup/config.yaml.<时间戳>.bak，备份失败即中止
+#                               不构建或上传 wheel、不同步 deploy.sh、不重启；需 biu deploy py 或手动重启服务后才生效
 #
 #   biu nginx                   调用 kmvpy nginx api/spa 读取模板，并按 BIU_API_HOST / BIU_SPA_HOST 的协议与域名
 #                               生成当前目录 nginx.conf.d/<host>.conf；SPA root 使用 BIU_DEPLOY 的远程基础目录 + /spa
@@ -94,6 +100,7 @@ BIU_DEPLOY_DEFAULT="${BIU_DEPLOY_USER}@${BIU_DEPLOY_HOST_DEFAULT}:${BIU_DEPLOY_D
 #   ./biu deploy                构建 py、spa，随后部署 spa 与 py
 #   ./biu deploy spa            仅部署前端
 #   ./biu deploy py             仅部署后端
+#   ./biu deploy config         仅更新远端配置，需另行重启服务后才生效
 #
 
 set -euo pipefail
@@ -121,13 +128,16 @@ biu — 本地构建并部署
 
   biu -h | --help
                         显示本说明
+  biu check-python
+                        仅核对当前 Conda 解释器，不构建、不连接服务器
 
   biu deploy
                         构建 Python wheel 与 SPA；全部构建成功后先部署 SPA，再部署 Python 服务
+                        不加 --update-config 时保留远端 config.yaml
   biu deploy --no-deps
                         构建并部署 SPA 与 Python；Python 远程 pip 使用 install -U --no-deps <wheel>
   biu deploy --update-config
-                        构建并部署 SPA 与 Python；执行 Python 部署前覆盖远程 <部署目标>/py/config.yaml
+                        构建并部署 SPA 与 Python；先备份已有远端配置至 py/backup/config.yaml.<时间戳>.bak（失败即中止），再覆盖 py/config.yaml，然后安装/重启
   biu deploy --rotate-jwt-keys
                         构建并部署 SPA 与 Python；Python 服务启动前自动轮换 user/admin JWT 密钥对
   biu deploy --update-config --rotate-jwt-keys --no-deps
@@ -141,16 +151,23 @@ biu — 本地构建并部署
 
   biu deploy py
                         构建 Python wheel，上传 dist/*.whl 与 app/etc/release/deploy.sh 到远程后执行，重新部署 Python 服务；pip 为 install -U <wheel>（会装依赖）
+                        不加 --update-config 时保留远端 config.yaml
   biu deploy py --no-deps
                         同上，pip 为 install -U --no-deps <wheel>（不随 wheel 装依赖）
   biu deploy py --update-config
-                        同上，但执行部署前先用本地 __PY_PROJECT_NAME__/app/etc/release/config.yaml 覆盖远程 <部署目标>/py/config.yaml
+                        同上，但先备份已有远端配置至 <部署目标>/py/backup/config.yaml.<时间戳>.bak（失败即中止），
+                        再用本地 __PY_PROJECT_NAME__/app/etc/release/config.yaml 覆盖远端 py/config.yaml，然后安装/重启
   biu deploy py --rotate-jwt-keys
                         同上，但 deploy.sh 激活 conda 并安装 wheel 后、启动服务前自动轮换 user/admin JWT 密钥对
   biu deploy py --update-config --rotate-jwt-keys --no-deps
                         更新配置、JWT 密钥轮换与 --no-deps 可同时使用，参数顺序不限
   biu deploy spa
                         构建 SPA，将 __SPA_PROJECT_NAME__/dist/spa 打包上传，远端备份原 spa 后解压替换
+                        不支持额外参数（包括 --update-config）
+  biu deploy config
+                        仅将本地 __PY_PROJECT_NAME__/app/etc/release/config.yaml 推到远端 py/config.yaml；不支持额外参数
+                        覆盖前备份已有配置至 py/backup/config.yaml.<时间戳>.bak，备份失败即中止
+                        不构建或上传 wheel、不同步 deploy.sh、不重启；需 biu deploy py 或手动重启服务后才生效
 
   biu nginx
                         调用 kmvpy nginx api/spa 输出模板，并按脚本顶部 BIU_API_HOST / BIU_SPA_HOST 的协议与域名
@@ -159,12 +176,16 @@ biu — 本地构建并部署
 
 部署目标:
   脚本顶部配置        BIU_DEPLOY_HOST / BIU_DEPLOY_USER / BIU_DEPLOY_DIST
-                       其中 BIU_DEPLOY_DIST 只写服务器上的远程目录，例如 /home/app/app_dist
+                       其中 BIU_DEPLOY_DIST 只写服务器上的远程目录，例如 /home/__PROJECT_NAME__/__PROJECT_NAME___dist
   BIU_DEPLOY           可选环境变量覆盖，形如 user@host:/远程基础目录
 
-远程 Python / conda:
+本地 Python / Conda:
+  必须先 conda activate <环境名>；本地构建、nginx 模板、JWT 操作固定使用该环境的 Python。
+  不支持嵌套虚拟环境或系统 Python；安装使用 python -m pip，构建使用 --no-isolation。
+
+远程 Python / Conda:
   BIU_DEPLOY_CONDA_ENV  见 biu 顶部；biu conda create <版本> 的环境名；biu deploy / biu deploy py 会向远程 export CONDA_ENV（本机已 export CONDA_ENV 则优先）。
-                       JWT 密钥对轮换由 deploy.sh 在该环境安装 wheel 后、启动服务前执行；deploy.sh 内不设默认，走 conda 时未设置会报错
+                       JWT 密钥对轮换由 deploy.sh 在该环境安装 wheel 后、启动服务前执行；deploy.sh 内不设默认，未指定环境会报错
 
 依赖:
   spa 构建: Node（与 package.json engines 一致为佳）；有 bun.lock 时优先 bun，否则 pnpm / npm
@@ -178,6 +199,7 @@ biu — 本地构建并部署
   biu deploy --update-config
   biu deploy --rotate-jwt-keys
   biu deploy spa
+  biu deploy config
   BIU_DEPLOY=deploy@server:/opt/dist biu deploy py
   biu deploy py --no-deps
   biu deploy py --update-config
@@ -321,30 +343,45 @@ run_spa_build() {
   log "SPA 构建完成: ${SPA_DIST}"
 }
 
+resolve_local_conda_python() {
+  [[ -z "${VIRTUAL_ENV:-}" ]] || die "检测到 VIRTUAL_ENV。请先 deactivate 退出旧虚拟环境，再 conda activate <环境名>；本项目只支持 Conda。"
+  [[ -z "${PYTHONHOME:-}" ]] || die "请先 unset PYTHONHOME；本项目只支持 Conda。"
+  [[ -n "${CONDA_PREFIX:-}" && -d "${CONDA_PREFIX}/conda-meta" ]] || die "未激活有效的 Conda 环境。请先 conda activate <环境名>；不回退到系统 Python。"
+  LOCAL_CONDA_PYTHON="${CONDA_PREFIX}/bin/python"
+  if [[ ! -x "$LOCAL_CONDA_PYTHON" && -x "${CONDA_PREFIX}/python.exe" ]]; then
+    LOCAL_CONDA_PYTHON="${CONDA_PREFIX}/python.exe"
+  fi
+  [[ -x "$LOCAL_CONDA_PYTHON" ]] || die "Conda 环境中没有 Python: ${CONDA_PREFIX}"
+  "$LOCAL_CONDA_PYTHON" -c 'import sys' >/dev/null || die "Conda 环境校验失败，请核对解释器与 CONDA_PREFIX。"
+}
+
 run_py_build() {
   [[ -d "${PY_DIR}" ]] || die "未找到 Python 工程目录: ${PY_DIR}"
-  local py_dir
+  local py_dir build_python install_command
   py_dir="$(cd "${PY_DIR}" && pwd)"
   cd "${py_dir}"
-  command -v python >/dev/null 2>&1 || die "未找到 python 命令"
-  if ! python -c "import build" >/dev/null 2>&1; then
-    die "需要 Python 的 build 模块。请执行: pip install build"
+  resolve_local_conda_python
+  build_python="$LOCAL_CONDA_PYTHON"
+  log "本地构建 Python: ${build_python}"
+  if ! "${build_python}" -c "import setuptools, build, wheel" >/dev/null 2>&1; then
+    printf -v install_command '%q -m pip install build setuptools wheel' "${build_python}"
+    die "当前 Conda 环境缺少构建依赖。请执行: ${install_command}"
   fi
-  log "在 ${py_dir} 执行 python -m build"
-  python -m build
+  log "在 ${py_dir} 执行 ${build_python} -m build --no-isolation"
+  "${build_python}" -m build --no-isolation
   log "Python 构建完成，产物位于 ${py_dir}/dist/"
 }
 
 run_local_rotate_jwt_keys() {
   [[ -f "${PY_DEVELOP_CONFIG}" ]] || die "未找到本地开发配置: ${PY_DEVELOP_CONFIG}"
-  command -v python >/dev/null 2>&1 || die "未找到 python 命令"
+  resolve_local_conda_python
   local config_dir config_file
   config_dir="$(cd "$(dirname "${PY_DEVELOP_CONFIG}")" && pwd)"
   config_file="$(basename "${PY_DEVELOP_CONFIG}")"
   log "轮换本地 develop config.yaml JWT 密钥对: ${PY_DEVELOP_CONFIG}"
   (
     cd "${config_dir}"
-    python -m kmvpy.generator.cli rotate-jwt-keys "${config_file}"
+    "$LOCAL_CONDA_PYTHON" -m kmvpy.generator.cli rotate-jwt-keys "${config_file}"
   )
   log "本地 develop config.yaml JWT 密钥对已轮换"
 }
@@ -432,11 +469,8 @@ parse_nginx_origin() {
 render_kmvpy_nginx_template() {
   local kind="${1}"
   local output=""
-  if command -v kmvpy >/dev/null 2>&1 && output="$(kmvpy nginx "${kind}" 2>/dev/null)"; then
-    printf '%s\n' "${output}"
-    return 0
-  fi
-  if command -v python >/dev/null 2>&1 && output="$(python -m kmvpy.generator.cli nginx "${kind}" 2>/dev/null)"; then
+  resolve_local_conda_python
+  if output="$("$LOCAL_CONDA_PYTHON" -m kmvpy.generator.cli nginx "${kind}" 2>/dev/null)"; then
     printf '%s\n' "${output}"
     return 0
   fi
@@ -647,6 +681,29 @@ ${remote_backup_script}"; then
   fi
 }
 
+# 调用前须已创建 py/backup；空路径表示远端原配置不存在，无需备份。
+backup_remote_config_yaml() {
+  local config_path backup_path ts
+  config_path="${DEPLOY_PATH}/py/config.yaml"
+  ts="$(date '+%Y%m%d_%H%M%S')"
+  backup_path="${DEPLOY_PATH}/py/backup/config.yaml.${ts}.bak"
+  REMOTE_CONFIG_BACKUP=""
+  # shellcheck disable=SC2029
+  if ! REMOTE_CONFIG_BACKUP="$(ssh "${SSH_PUSH_OPTS[@]}" "${DEPLOY_SSH}" "set -euo pipefail
+    if [[ -f '${config_path}' ]]; then
+      cp '${config_path}' '${backup_path}'
+      printf '%s\\n' '${backup_path}'
+    fi")"; then
+    hint_deploy_fix "ssh 远端备份 config.yaml 失败。当前目标: ${BIU_DEPLOY}"
+    die "配置备份失败，已中止，不会覆盖远端 config.yaml。备份目标: ${backup_path}"
+  fi
+  if [[ -n "${REMOTE_CONFIG_BACKUP}" ]]; then
+    log "远端 config.yaml 已备份至: ${REMOTE_CONFIG_BACKUP}"
+  else
+    log "远端 config.yaml 不存在，跳过备份: ${config_path}"
+  fi
+}
+
 run_py_scp() {
   command -v scp >/dev/null 2>&1 || die "未找到 scp 命令"
   command -v ssh >/dev/null 2>&1 || die "未找到 ssh 命令"
@@ -720,11 +777,13 @@ run_py_deploy() {
   fi
   if [[ "${update_config_flag}" == "1" ]]; then
     [[ -f "${PY_RELEASE_CONFIG}" ]] || die "未找到 release 配置: ${PY_RELEASE_CONFIG}"
+    backup_remote_config_yaml
     log "更新远程 config.yaml → ${DEPLOY_SSH}:${py_dir}/config.yaml"
     if ! scp "${SSH_PUSH_OPTS[@]}" "${PY_RELEASE_CONFIG}" "${DEPLOY_SSH}:${py_dir}/config.yaml"; then
       hint_deploy_fix "scp 上传 config.yaml 失败。当前目标: ${BIU_DEPLOY}"
       exit 1
     fi
+    log "已用本地 __PY_PROJECT_NAME__/app/etc/release/config.yaml 覆盖远端 ${DEPLOY_SSH}:${py_dir}/config.yaml；原文件备份: ${REMOTE_CONFIG_BACKUP:-无（远端原文件不存在）}"
   fi
 
   local conda_env_for_remote
@@ -911,6 +970,14 @@ parse_spa_deploy_flags() {
   done
 }
 
+parse_config_deploy_flags() {
+  local arg
+  for arg in "$@"; do
+    usage
+    die "未知参数: deploy config 不支持额外参数，收到: ${arg}"
+  done
+}
+
 parse_all_deploy_flags() {
   PARSED_ALL_DEPLOY_NO_DEPS=0
   PARSED_ALL_DEPLOY_ROTATE_JWT_KEYS=0
@@ -929,7 +996,7 @@ parse_all_deploy_flags() {
         ;;
       *)
         usage
-        die "未知参数: deploy 全量发布仅支持 --no-deps / --update-config / --rotate-jwt-keys；单独发布请用 deploy py 或 deploy spa，收到: ${arg}"
+        die "未知参数: deploy 全量发布仅支持 --no-deps / --update-config / --rotate-jwt-keys；单独发布请用 deploy py、deploy spa 或 deploy config，收到: ${arg}"
         ;;
     esac
   done
@@ -946,6 +1013,29 @@ run_deploy_py() {
 run_deploy_spa() {
   run_spa_build
   run_spa_scp
+}
+
+run_deploy_config() {
+  command -v scp >/dev/null 2>&1 || die "未找到 scp 命令"
+  command -v ssh >/dev/null 2>&1 || die "未找到 ssh 命令"
+  parse_biudeploy
+  [[ -f "${PY_RELEASE_CONFIG}" ]] || die "未找到 release 配置: ${PY_RELEASE_CONFIG}"
+  local py_dir backup_dir
+  py_dir="${DEPLOY_PATH}/py"
+  backup_dir="${py_dir}/backup"
+  log "在远程创建配置与备份目录 → ${DEPLOY_SSH}:${py_dir}/"
+  if ! ssh "${SSH_PUSH_OPTS[@]}" "${DEPLOY_SSH}" "mkdir -p '${py_dir}' '${backup_dir}'"; then
+    hint_deploy_fix "ssh 无法登录或无法在远程创建目录（mkdir）。当前目标: ${BIU_DEPLOY}"
+    die "无法创建配置与备份目录，已中止配置更新。"
+  fi
+  backup_remote_config_yaml
+  log "更新远程 config.yaml → ${DEPLOY_SSH}:${py_dir}/config.yaml"
+  if ! scp "${SSH_PUSH_OPTS[@]}" "${PY_RELEASE_CONFIG}" "${DEPLOY_SSH}:${py_dir}/config.yaml"; then
+    hint_deploy_fix "scp 上传 config.yaml 失败。当前目标: ${BIU_DEPLOY}"
+    die "配置上传失败。原文件备份: ${REMOTE_CONFIG_BACKUP:-无（远端原文件不存在）}"
+  fi
+  log "已用本地 __PY_PROJECT_NAME__/app/etc/release/config.yaml 覆盖远端 ${DEPLOY_SSH}:${py_dir}/config.yaml；原文件备份: ${REMOTE_CONFIG_BACKUP:-无（远端原文件不存在）}"
+  log "配置已更新；需 biu deploy py 或手动重启服务后才生效。"
 }
 
 run_build_all() {
@@ -967,6 +1057,14 @@ run_deploy_all() {
 main() {
   local target="${1:-}"
   local action="${2:-}"
+
+  if [[ "${target}" == "check-python" ]]; then
+    [[ $# -eq 1 ]] || die "用法: biu check-python"
+    resolve_local_conda_python
+    log "CONDA_PREFIX=${CONDA_PREFIX}"
+    "$LOCAL_CONDA_PYTHON" -c 'import sys; print("python:", sys.version.split()[0]); print("executable:", sys.executable)'
+    exit 0
+  fi
 
   if [[ "${target}" == "-h" || "${target}" == "--help" ]]; then
     usage
@@ -1015,6 +1113,11 @@ main() {
     if [[ "${action}" == "py" ]]; then
       parse_py_deploy_flags "${@:3}"
       run_deploy_py "${PARSED_PY_DEPLOY_NO_DEPS}" "${PARSED_PY_DEPLOY_ROTATE_JWT_KEYS}" "${PARSED_PY_DEPLOY_UPDATE_CONFIG}"
+      exit 0
+    fi
+    if [[ "${action}" == "config" ]]; then
+      parse_config_deploy_flags "${@:3}"
+      run_deploy_config
       exit 0
     fi
     parse_all_deploy_flags "${@:2}"

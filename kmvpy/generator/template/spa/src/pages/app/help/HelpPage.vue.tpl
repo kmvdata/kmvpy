@@ -217,8 +217,8 @@ const commandGroups = computed<CommandGroup[]>(() => [
     title: t("helpCenter.quickStart.repoTitle"),
     commands: [
       t("helpCenter.quickStart.commands.enterSisyphusPy"),
-      t("helpCenter.quickStart.commands.createVenv"),
-      t("helpCenter.quickStart.commands.activateVenv"),
+      t("helpCenter.quickStart.commands.createCondaEnv"),
+      t("helpCenter.quickStart.commands.activateCondaEnv"),
       t("helpCenter.quickStart.commands.installRepo"),
       t("helpCenter.quickStart.commands.runRepo"),
     ],

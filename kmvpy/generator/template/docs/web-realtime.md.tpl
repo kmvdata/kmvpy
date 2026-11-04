@@ -127,8 +127,8 @@ Redis 使用服务器 TIME、Lua 原子准入/频率/订阅额度、唯一随机
 ```sh
 redis-server --bind 127.0.0.1 --port 16389 --save '' --appendonly no
 cd __PY_PROJECT_NAME__
-PYTHONPATH=. .venv/bin/python -m unittest discover -s tests -p test_realtime.py
-PYTHONPATH=. .venv/bin/python tests/realtime_fixture.py
+PYTHONPATH=. python -m unittest discover -s tests -p test_realtime.py
+PYTHONPATH=. python tests/realtime_fixture.py
 ```
 
 另开本机终端：

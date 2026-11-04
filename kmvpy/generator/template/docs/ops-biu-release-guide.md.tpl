@@ -10,7 +10,9 @@
 | `./biu deploy` | 全量发布：先部署 SPA，再部署后端 |
 | `./biu deploy spa` | 只发布前端 |
 | `./biu deploy py` | 只发布后端 |
+| `./biu deploy config` | 只推送远端 config.yaml（先备份原文件），需另行重启才生效 |
 | `./biu conda create 3.11` | 在远程创建 conda 环境 |
+| `./biu check-python` | 仅核对本地已激活的 Conda 解释器，不构建、不连远程 |
 | `./biu nginx` | 生成 Nginx 配置（见 ops-nginx-and-certificates.md） |
 | `./biu --rotate-jwt-keys` | 轮换本地开发配置的 JWT 密钥 |
 
@@ -23,8 +25,8 @@ BIU_DEPLOY_HOST=""                                  # 服务器 IP/域名；留�
 BIU_DEPLOY_USER="__PROJECT_NAME__"                          # SSH 用户
 BIU_DEPLOY_DIST="/home/__PROJECT_NAME__/__PROJECT_NAME___dist"      # 远程发布目录
 BIU_DEPLOY_CONDA_ENV='kmvpy'                       # 远程 conda 环境名
-BIU_API_HOST=""                                     # API 域名，如 https://api.example.com
-BIU_SPA_HOST=""                                     # SPA 域名，如 https://www.example.com
+BIU_API_HOST="https://api.kmvdata.com"               # API 域名
+BIU_SPA_HOST="https://www.kmvdata.com"               # SPA 域名
 ```
 
 `BIU_API_HOST` / `BIU_SPA_HOST` 用于生成 Nginx 配置，并在构建时自动同步 `VITE_API_BASE_URL`，建议直接填真实域名。不想改脚本时，可用环境变量临时覆盖目标：

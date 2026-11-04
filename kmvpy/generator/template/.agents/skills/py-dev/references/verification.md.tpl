@@ -17,10 +17,10 @@
 
 ## 现有实时行为测试
 
-涉及登录会话、Socket 或资源保护时，从 `__PY_PROJECT_NAME__` 使用项目解释器运行：
+涉及登录会话、Socket 或资源保护时，从 `__PY_PROJECT_NAME__` 使用已激活的 Conda 环境解释器运行（本项目只使用 Conda，不使用 venv）：
 
 ```bash
-PYTHONPATH=. .venv/bin/python -m unittest discover -s tests -p test_realtime.py
+PYTHONPATH=. python -m unittest discover -s tests -p test_realtime.py
 ```
 
 前置条件为独立本机 Redis（默认 127.0.0.1:16389，可用 `__PROJECT_NAME_UPPER___TEST_REDIS_PORT` 指定），fixture 生成临时签名密钥和测试登录。不要改真实账号/密钥或借用已有业务 Redis；启动命令及双端浏览器复现见 [Web 实时连接文档](../../../../docs/web-realtime.md)。完成后关闭自己启动的服务。

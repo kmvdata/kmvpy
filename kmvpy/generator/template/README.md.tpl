@@ -100,13 +100,12 @@ kmvpy>=0.2.1
 
 如果你的环境没有这个本地路径，需要先安装可用的 KMVPy 包或调整依赖来源。
 
-本地启动：
+本地启动（本项目只使用 Conda，不使用 venv）：
 
 ```bash
 cd __PY_PROJECT_NAME__
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[postgresql]"
+conda activate kmvpy   # 或任意已安装本项目依赖的 Conda 环境
+python -m pip install -e ".[postgresql]"
 python app/run.py
 ```
 

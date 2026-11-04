@@ -19,15 +19,15 @@ BIU_DEPLOY=deploy@example.com:/home/__PROJECT_NAME__/__PROJECT_NAME___dist \
 生成到当前目录：
 
 ```text
-nginx.conf.d/api.example.com.conf
-nginx.conf.d/www.example.com.conf
+nginx.conf.d/api.kmvdata.com.conf
+nginx.conf.d/www.kmvdata.com.conf
 ```
 
 ## 2. 安装并重载
 
 ```bash
-sudo cp nginx.conf.d/api.example.com.conf /etc/nginx/conf.d/
-sudo cp nginx.conf.d/www.example.com.conf /etc/nginx/conf.d/
+sudo cp nginx.conf.d/api.kmvdata.com.conf /etc/nginx/conf.d/
+sudo cp nginx.conf.d/www.kmvdata.com.conf /etc/nginx/conf.d/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 

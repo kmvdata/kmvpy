@@ -100,13 +100,12 @@ kmvpy>=0.2.1
 
 If your environment does not have this local path, install an available KMVPy package or adjust the dependency source first.
 
-Run locally:
+Run locally (this project uses Conda only, no venv):
 
 ```bash
 cd __PY_PROJECT_NAME__
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[postgresql]"
+conda activate kmvpy   # or any Conda environment with the project dependencies installed
+python -m pip install -e ".[postgresql]"
 python app/run.py
 ```
 
