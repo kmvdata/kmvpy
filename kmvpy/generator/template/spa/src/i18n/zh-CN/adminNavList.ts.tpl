@@ -12,6 +12,13 @@ export default {
 
   systemSettings: "系统设置",
   systemSettingsSub: "后台服务维护与安全确认",
-  databaseTables: "数据库表管理",
-  databaseTablesSub: "连接检查、表删除与 ORM 重建",
+
+  databases: "数据库",
+  databaseTablesSub: "查看表结构、行数与 ORM 注册情况",
+  databasesLoading: "正在识别数据库…",
+  databasesEmpty: "未识别到数据库",
+  expandChildren: "展开「{label}」的子菜单",
+  collapseChildren: "收起「{label}」的子菜单",
+  tablesLoading: "正在读取数据表…",
+  tablesEmpty: "该库暂无数据表",
 };

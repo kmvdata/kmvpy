@@ -2,8 +2,6 @@ import { postAdminApi } from "src/boot/axios_admin";
 import type {
   AdminDatabaseTableActionReq,
   AdminDatabaseTableActionRes,
-  AdminDatabaseTablesInitializeAllReq,
-  AdminDatabaseTablesInitializeAllRes,
   AdminDatabaseTablesListReq,
   AdminDatabaseTablesListRes,
 } from "src/network/dto/admin/database_table";
@@ -36,19 +34,6 @@ export class ApiAdminDatabaseTable {
       "/api/admin/database_table/regenerate",
       requestData,
       "重建数据库表失败",
-    );
-  }
-
-  static initializeAllTables(
-    requestData: AdminDatabaseTablesInitializeAllReq,
-  ): Promise<AdminDatabaseTablesInitializeAllRes> {
-    return postAdminApi<
-      AdminDatabaseTablesInitializeAllReq,
-      AdminDatabaseTablesInitializeAllRes
-    >(
-      "/api/admin/database_table/initialize_all",
-      requestData,
-      "重新初始化全部数据表失败",
     );
   }
 }

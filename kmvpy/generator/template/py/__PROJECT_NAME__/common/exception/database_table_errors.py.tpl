@@ -30,8 +30,8 @@ DATABASE_TABLE_OPERATION_FAILED_ERROR = [
     "数据表操作失败，请稍后重试",
 ]
 
-DATABASE_TABLE_INITIALIZE_CONFIRM_MISMATCH_ERROR = [
-    46006,
-    "全量初始化确认不一致",
-    "全量初始化确认文本不一致",
+DATABASE_SCOPE_FORBIDDEN_ERROR = [
+    46007,
+    "数据库不在允许清单",
+    "当前只允许操作配置文件指定的数据库",
 ]

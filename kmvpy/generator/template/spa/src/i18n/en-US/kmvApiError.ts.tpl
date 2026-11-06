@@ -37,7 +37,8 @@ export default {
     "46004":
       "This table is not registered in the ORM initialization list and cannot be regenerated automatically.",
     "46005": "Table operation failed. Please try again.",
-    "46006": "The initialize-all confirmation text does not match.",
+    "46007":
+      "Only the database configured for this service can be managed here.",
     "47001": "The service restart confirmation text does not match.",
     "47002":
       "Could not find deploy.sh for the current runtime configuration, so the admin panel cannot trigger a restart.",

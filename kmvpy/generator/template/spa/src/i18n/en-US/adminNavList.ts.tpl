@@ -12,6 +12,13 @@ export default {
 
   systemSettings: "System Settings",
   systemSettingsSub: "Backend service maintenance with safety confirmation",
-  databaseTables: "Database Tables",
-  databaseTablesSub: "Connection checks, table drops, and ORM regeneration",
+
+  databases: "Databases",
+  databaseTablesSub: "Table structure, row counts, and ORM registration",
+  databasesLoading: "Detecting databases...",
+  databasesEmpty: "No databases detected",
+  expandChildren: "Expand submenu of {label}",
+  collapseChildren: "Collapse submenu of {label}",
+  tablesLoading: "Loading tables...",
+  tablesEmpty: "No tables in this database",
 };

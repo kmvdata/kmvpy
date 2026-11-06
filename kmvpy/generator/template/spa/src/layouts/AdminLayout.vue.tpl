@@ -80,22 +80,165 @@
               />
             </div>
             <template v-if="isAdminSectionExpanded(section.key)">
-              <a
-                v-for="item in section.items"
-                :id="`nav-${item.id}`"
-                :key="item.id"
-                class="nav-item"
-                :href="item.toUri"
-                :class="{ active: isActiveNavItem(item.id) }"
-                @click.prevent="showPage(item.id)"
-              >
-                <span class="nav-icon">
-                  <q-icon :name="item.icon" size="18px" />
-                </span>
-                <span class="nav-label">
-                  {{ t(`layouts.adminNav.${item.titleKey}`) }}
-                </span>
-              </a>
+              <template v-for="item in section.items" :key="item.id">
+                <div class="admin-nav-row">
+                  <a
+                    v-if="item.toUri"
+                    :id="`nav-${item.id}`"
+                    class="nav-item admin-nav-row__link"
+                    :class="{ active: isNavItemActive(item) }"
+                    :href="item.toUri"
+                    :aria-current="isNavItemActive(item) ? 'page' : undefined"
+                    @click.prevent="openNavItem(item)"
+                  >
+                    <span class="nav-icon">
+                      <q-icon :name="item.icon" size="18px" />
+                    </span>
+                    <span class="nav-label">{{ item.label }}</span>
+                  </a>
+                  <div
+                    v-else
+                    :id="`nav-${item.id}`"
+                    class="nav-item admin-nav-row__link admin-nav-row__group"
+                    role="button"
+                    tabindex="0"
+                    :aria-expanded="isNavItemExpanded(item.id)"
+                    @click="toggleNavItem(item.id)"
+                    @keydown.enter.prevent="toggleNavItem(item.id)"
+                    @keydown.space.prevent="toggleNavItem(item.id)"
+                  >
+                    <span class="nav-icon">
+                      <q-icon :name="item.icon" size="18px" />
+                    </span>
+                    <span class="nav-label">{{ item.label }}</span>
+                    <q-icon
+                      :name="
+                        isNavItemExpanded(item.id) ? 'expand_less' : 'expand_more'
+                      "
+                      size="18px"
+                      class="admin-nav-row__group-chevron"
+                    />
+                  </div>
+                  <q-btn
+                    v-if="item.toUri && item.children.length > 0"
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    class="admin-nav-row__toggle"
+                    :icon="
+                      isNavItemExpanded(item.id) ? 'expand_less' : 'expand_more'
+                    "
+                    :aria-label="navChildrenToggleLabel(item)"
+                    :aria-expanded="isNavItemExpanded(item.id)"
+                    @click="toggleNavItem(item.id)"
+                  />
+                </div>
+                <div
+                  v-if="item.children.length > 0 && isNavItemExpanded(item.id)"
+                  class="admin-nav-children"
+                >
+                  <template v-for="child in item.children" :key="child.id">
+                    <div
+                      class="nav-item admin-nav-child admin-nav-row__group"
+                      :class="{ active: isDatabaseChildActive(child) }"
+                      role="button"
+                      tabindex="0"
+                      :aria-current="
+                        isDatabaseChildActive(child) ? 'page' : undefined
+                      "
+                      :aria-expanded="isDatabaseItemExpanded(child.id)"
+                      @click="activateDatabaseRow(child)"
+                      @keydown.enter.prevent="activateDatabaseRow(child)"
+                      @keydown.space.prevent="activateDatabaseRow(child)"
+                    >
+                      <span
+                        class="nav-icon admin-nav-child__dot"
+                        aria-hidden="true"
+                      >
+                        <q-icon name="circle" size="8px" />
+                      </span>
+                      <span class="nav-label admin-nav-child__label">
+                        {{ child.label }}
+                      </span>
+                      <span
+                        v-if="child.metaLabel"
+                        class="admin-nav-child__meta mono"
+                      >
+                        {{ child.metaLabel }}
+                      </span>
+                      <q-icon
+                        :name="
+                          isDatabaseItemExpanded(child.id)
+                            ? 'expand_less'
+                            : 'expand_more'
+                        "
+                        size="18px"
+                        class="admin-nav-row__group-chevron"
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <div
+                      v-if="
+                        child.expandable && isDatabaseItemExpanded(child.id)
+                      "
+                      class="admin-nav-children admin-nav-children--nested"
+                    >
+                      <a
+                        v-for="table in child.children"
+                        :key="table.id"
+                        class="nav-item admin-nav-leaf"
+                        :class="{ active: isTableNavActive(table) }"
+                        :href="table.toUri"
+                        :aria-current="
+                          isTableNavActive(table) ? 'page' : undefined
+                        "
+                        @click.prevent="openTableNav(table)"
+                      >
+                        <span class="nav-icon admin-nav-leaf__icon">
+                          <q-icon name="table_chart" size="12px" />
+                        </span>
+                        <span class="nav-label admin-nav-leaf__label mono">
+                          {{ table.label }}
+                        </span>
+                      </a>
+                      <div
+                        v-if="child.children.length === 0"
+                        class="admin-nav-empty admin-nav-empty--nested"
+                      >
+                        <template
+                          v-if="
+                            databaseTablesPlaceholder(child) === 'loading'
+                          "
+                        >
+                          {{ t("layouts.adminNav.tablesLoading") }}
+                        </template>
+                        <q-btn
+                          v-else-if="
+                            databaseTablesPlaceholder(child) === 'error'
+                          "
+                          flat
+                          dense
+                          no-caps
+                          size="sm"
+                          icon="refresh"
+                          :label="t('common.retry')"
+                          @click="retryDatabaseTables(child)"
+                        />
+                        <template v-else>
+                          {{ t("layouts.adminNav.tablesEmpty") }}
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+                <div
+                  v-if="item.children.length === 0 && item.emptyChildrenLabel"
+                  class="admin-nav-empty"
+                >
+                  {{ item.emptyChildrenLabel }}
+                </div>
+              </template>
             </template>
           </div>
         </aside>
@@ -115,15 +258,54 @@ import { useRoute, useRouter } from "vue-router";
 
 import AccountStyleMenu from "src/components/AccountStyleMenu.vue";
 import AppLogo from "src/components/AppLogo.vue";
+import { useDatabaseCatalogStore } from "src/stores/databaseCatalog";
 
 type AdminSectionKey = "adminSection" | "systemSection";
 
-type AdminNavItem = {
+/** 导航目标：既能作为一级入口，也能作为“数据库”下的动态子菜单。 */
+type AdminNavTarget = {
   id: string;
   toUri: string;
-  titleKey: string;
-  subtitleKey: string;
+  name: string;
+  params?: Record<string, string>;
+  query?: Record<string, string>;
+  label: string;
+  subtitle: string;
+};
+
+/** 三级菜单项：数据库下的每张数据表，跳转时携带 `?table=` 定位。 */
+type AdminNavTableLink = {
+  id: string;
+  label: string;
+  toUri: string;
+  name: string;
+  params: Record<string, string>;
+  query: Record<string, string>;
+};
+
+/**
+ * 二级菜单项：识别到的数据库。它既能作为跳转链接，也能像一级分组一样
+ * 展开第三级菜单（该库的每张数据表）。
+ */
+type AdminNavChild = AdminNavTarget & {
+  metaLabel?: string | null;
+  expandable?: boolean;
+  children: AdminNavTableLink[];
+};
+
+/**
+ * 一级菜单项：带 `toUri` 时可跳转；仅作为分组（如“数据库”）时
+ * 点击只展开下拉子菜单，不再进入独立页面。
+ */
+type AdminNavItem = {
+  id: string;
+  label: string;
   icon: string;
+  children: AdminNavChild[];
+  emptyChildrenLabel?: string;
+  toUri?: string;
+  name?: string;
+  subtitle?: string;
 };
 
 type AdminNavSection = {
@@ -136,7 +318,55 @@ const ADMIN_DRAWER_WIDTH = 260;
 const ADMIN_DRAWER_BREAKPOINT = 1024;
 const ADMIN_LAYOUT_GAP = 8;
 
-const adminNavSections: AdminNavSection[] = [
+const route = useRoute();
+const router = useRouter();
+const { t } = useI18n();
+const databaseCatalog = useDatabaseCatalogStore();
+
+const drawerOpen = ref(true);
+const drawerHasLayout = ref(true);
+const adminLayoutStyle: Record<string, string> = {
+  "--admin-drawer-width": `${ADMIN_DRAWER_WIDTH}px`,
+  "--admin-layout-gap": `${ADMIN_LAYOUT_GAP}px`,
+  "--admin-layout-hidden-page-x": `${ADMIN_DRAWER_WIDTH / 2 + ADMIN_LAYOUT_GAP}px`,
+};
+const expandedAdminSections = reactive<Record<AdminSectionKey, boolean>>({
+  adminSection: true,
+  systemSection: false,
+});
+/** 未显式收起即视为展开，新增子菜单默认可见。 */
+const collapsedNavItems = reactive<Record<string, boolean>>({});
+/**
+ * 数据库项默认收起：展开意味着为该库单独建连读取表清单，
+ * 因此只保留显式展开，避免进入后台即为每个库发起探测。
+ */
+const expandedDatabaseItems = reactive<Record<string, boolean>>({});
+
+const databaseChildren = computed<AdminNavChild[]>(() =>
+  databaseCatalog.databases.map((database) => ({
+    id: `database-${database.name}`,
+    toUri: `/admin/database/${encodeURIComponent(database.name)}`,
+    name: "admin-database-tables",
+    params: { databaseName: database.name },
+    label: database.name,
+    subtitle: t("layouts.adminNav.databaseTablesSub"),
+    metaLabel:
+      database.table_count === null ? null : String(database.table_count),
+    expandable: true,
+    children: databaseCatalog.tablesOf(database.name).map((table) => ({
+      id: `database-table-${database.name}-${table.name}`,
+      label: table.name,
+      toUri: `/admin/database/${encodeURIComponent(
+        database.name,
+      )}?table=${encodeURIComponent(table.name)}`,
+      name: "admin-database-tables",
+      params: { databaseName: database.name },
+      query: { table: table.name },
+    })),
+  })),
+);
+
+const adminNavSections = computed<AdminNavSection[]>(() => [
   {
     key: "adminSection",
     titleKey: "adminSection",
@@ -144,16 +374,20 @@ const adminNavSections: AdminNavSection[] = [
       {
         id: "users",
         toUri: "/admin/users",
-        titleKey: "users",
-        subtitleKey: "usersSub",
+        name: "admin-users",
+        label: t("layouts.adminNav.users"),
+        subtitle: t("layouts.adminNav.usersSub"),
         icon: "group",
+        children: [],
       },
       {
         id: "workTickets",
         toUri: "/admin/work-tickets",
-        titleKey: "workTickets",
-        subtitleKey: "workTicketsSub",
+        name: "admin-work-tickets",
+        label: t("layouts.adminNav.workTickets"),
+        subtitle: t("layouts.adminNav.workTicketsSub"),
         icon: "support_agent",
+        children: [],
       },
     ],
   },
@@ -164,45 +398,46 @@ const adminNavSections: AdminNavSection[] = [
       {
         id: "systemSettings",
         toUri: "/admin/system-settings",
-        titleKey: "systemSettings",
-        subtitleKey: "systemSettingsSub",
+        name: "admin-system-settings",
+        label: t("layouts.adminNav.systemSettings"),
+        subtitle: t("layouts.adminNav.systemSettingsSub"),
         icon: "settings",
+        children: [],
       },
       {
-        id: "databaseTables",
-        toUri: "/admin/database-tables",
-        titleKey: "databaseTables",
-        subtitleKey: "databaseTablesSub",
-        icon: "table_chart",
+        id: "databases",
+        label: t("layouts.adminNav.databases"),
+        icon: "storage",
+        children: databaseChildren.value,
+        emptyChildrenLabel: databaseCatalog.isLoading
+          ? t("layouts.adminNav.databasesLoading")
+          : t("layouts.adminNav.databasesEmpty"),
       },
     ],
   },
-];
+]);
 
-const adminNavItems = adminNavSections.flatMap((section) => section.items);
-const adminNavItemById = Object.fromEntries(
-  adminNavItems.map((item) => [item.id, item]),
-) as Record<string, AdminNavItem>;
-const adminSectionById = Object.fromEntries(
-  adminNavSections.flatMap((section) =>
-    section.items.map((item) => [item.id, section.key]),
+const allNavTargets = computed<AdminNavTarget[]>(() =>
+  adminNavSections.value.flatMap((section) =>
+    section.items.flatMap((item) => {
+      const link = navLinkOf(item);
+      return link ? [link, ...item.children] : [...item.children];
+    }),
   ),
-) as Record<string, AdminSectionKey>;
+);
 
-const route = useRoute();
-const router = useRouter();
-const drawerOpen = ref(true);
-const drawerHasLayout = ref(true);
-const adminLayoutStyle: Record<string, string> = {
-  "--admin-drawer-width": `${ADMIN_DRAWER_WIDTH}px`,
-  "--admin-layout-gap": `${ADMIN_LAYOUT_GAP}px`,
-  "--admin-layout-hidden-page-x": `${ADMIN_DRAWER_WIDTH / 2 + ADMIN_LAYOUT_GAP}px`,
-};
-const { t } = useI18n();
-const expandedAdminSections = reactive<Record<AdminSectionKey, boolean>>({
-  adminSection: true,
-  systemSection: false,
-});
+function navLinkOf(item: AdminNavItem): AdminNavTarget | null {
+  if (!item.toUri || !item.name) {
+    return null;
+  }
+  return {
+    id: item.id,
+    toUri: item.toUri,
+    name: item.name,
+    label: item.label,
+    subtitle: item.subtitle ?? item.label,
+  };
+}
 
 function isAdminSectionExpanded(sectionKey: AdminSectionKey): boolean {
   return expandedAdminSections[sectionKey] === true;
@@ -212,21 +447,24 @@ function toggleAdminSection(sectionKey: AdminSectionKey) {
   expandedAdminSections[sectionKey] = !expandedAdminSections[sectionKey];
 }
 
-function openCurrentAdminSection() {
-  const currentNavId = currentAdminNavItem.value?.id;
-  const sectionKey = currentNavId ? adminSectionById[currentNavId] : null;
-  if (sectionKey) {
-    expandedAdminSections[sectionKey] = true;
-  }
+function isNavItemExpanded(itemId: string): boolean {
+  return collapsedNavItems[itemId] !== true;
 }
 
-function setDrawerLayout(value: boolean) {
-  drawerHasLayout.value = value;
+function toggleNavItem(itemId: string) {
+  // 状态以“未收起的 id 不在 collapsedNavItems 中”表达，
+  // 展开时写入 true 表示收起，收起时清除标记才会重新展开。
+  collapsedNavItems[itemId] = isNavItemExpanded(itemId);
 }
 
-const currentAdminPath = computed(() => {
-  return normalizeAdminPath(route?.path ?? "/admin/users");
-});
+function navChildrenToggleLabel(item: AdminNavItem): string {
+  return t(
+    isNavItemExpanded(item.id)
+      ? "layouts.adminNav.collapseChildren"
+      : "layouts.adminNav.expandChildren",
+    { label: item.label },
+  );
+}
 
 function normalizeAdminPath(path: string): string {
   const base = path.split("?")[0] ?? path;
@@ -236,64 +474,254 @@ function normalizeAdminPath(path: string): string {
   return base;
 }
 
-function isNavItemActive(navItem: AdminNavItem, path: string): boolean {
-  const p = normalizeAdminPath(path);
-  const u = normalizeAdminPath(navItem.toUri);
-  return p === u || p.startsWith(`${u}/`);
+function isNavTargetActive(toUri: string, path?: string): boolean {
+  const current = normalizeAdminPath(path ?? currentAdminPath.value);
+  const target = normalizeAdminPath(toUri);
+  return current === target || current.startsWith(`${target}/`);
 }
 
-function resolveAdminNavItem(path: string): AdminNavItem | null {
-  const matches = adminNavItems.filter((item) => isNavItemActive(item, path));
+/** 当前路由的 `?table=` 参数，用于高亮三级菜单中的数据表。 */
+function currentTableName(): string {
+  const raw = route.query.table;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return typeof value === "string" ? value : "";
+}
+
+/** 数据库项只有在其页面未指定数据表时才算当前页，避免与三级项重复。 */
+function isDatabaseChildActive(child: AdminNavChild): boolean {
+  if (!isNavTargetActive(child.toUri)) {
+    return false;
+  }
+  return !currentTableName();
+}
+
+function isTableNavActive(table: AdminNavTableLink): boolean {
+  if (!isNavTargetActive(table.toUri)) {
+    return false;
+  }
+  return currentTableName() === table.query.table;
+}
+
+function isDatabaseItemExpanded(itemId: string): boolean {
+  return expandedDatabaseItems[itemId] === true;
+}
+
+function toggleDatabaseItem(itemId: string) {
+  expandedDatabaseItems[itemId] = !isDatabaseItemExpanded(itemId);
+}
+
+/** 数据表占位状态：尚未加载完也按加载中呈现，避免闪现空态。 */
+function databaseTablesPlaceholder(
+  child: AdminNavChild,
+): "loading" | "error" | "empty" {
+  const status = databaseCatalog.tableStatusOf(child.label);
+  if (status === "error") {
+    return "error";
+  }
+  if (status === "ready") {
+    return "empty";
+  }
+  return "loading";
+}
+
+function retryDatabaseTables(child: AdminNavChild) {
+  void databaseCatalog.ensureTablesLoaded(child.label).catch(() => undefined);
+}
+
+/** 有子菜单的一级导航仅在自身页面高亮，避免与子项同时标记为当前页。 */
+function isNavItemActive(item: AdminNavItem): boolean {
+  if (!item.toUri) {
+    return false;
+  }
+  if (item.children.length > 0) {
+    return (
+      normalizeAdminPath(currentAdminPath.value) ===
+      normalizeAdminPath(item.toUri)
+    );
+  }
+  return isNavTargetActive(item.toUri);
+}
+
+const currentAdminPath = computed(() =>
+  normalizeAdminPath(route?.path ?? "/admin/users"),
+);
+
+const currentNavTarget = computed<AdminNavTarget | null>(() => {
+  const matches = allNavTargets.value.filter((target) =>
+    isNavTargetActive(target.toUri),
+  );
   if (!matches.length) {
     return null;
   }
-  return matches.reduce((best, cur) =>
-    cur.toUri.length > best.toUri.length ? cur : best,
+  return matches.reduce((best, current) =>
+    current.toUri.length > best.toUri.length ? current : best,
+  );
+});
+
+/** 一级项自身或其子项命中当前路由时，自动展开所属分组。 */
+function navItemOwnsRoute(item: AdminNavItem): boolean {
+  if (item.toUri && isNavTargetActive(item.toUri)) {
+    return true;
+  }
+  return item.children.some((child) => isNavTargetActive(child.toUri));
+}
+
+function openCurrentAdminSection() {
+  const section = adminNavSections.value.find((sectionItem) =>
+    sectionItem.items.some(navItemOwnsRoute),
+  );
+  if (section) {
+    expandedAdminSections[section.key] = true;
+  }
+}
+
+/** 当前路由落在某个数据库页面时，自动展开该库的数据表菜单。 */
+function openCurrentDatabaseItem() {
+  const currentPath = currentAdminPath.value;
+  for (const child of databaseChildren.value) {
+    if (normalizeAdminPath(child.toUri) === currentPath) {
+      expandedDatabaseItems[child.id] = true;
+    }
+  }
+}
+
+function openCurrentNavPath() {
+  openCurrentAdminSection();
+  openCurrentDatabaseItem();
+}
+
+function setDrawerLayout(value: boolean) {
+  drawerHasLayout.value = value;
+}
+
+/** 同一页面内切换数据表只改 query，因此导航前需要比较 query 是否一致。 */
+function sameNavQuery(nextQuery: Record<string, unknown>): boolean {
+  const current = route.query;
+  const keys = new Set([...Object.keys(current), ...Object.keys(nextQuery)]);
+  for (const key of keys) {
+    const rawCurrent = current[key];
+    const rawNext = nextQuery[key];
+    const currentValue = Array.isArray(rawCurrent) ? rawCurrent[0] : rawCurrent;
+    const nextValue = Array.isArray(rawNext) ? rawNext[0] : rawNext;
+    if (String(currentValue ?? "") !== String(nextValue ?? "")) {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function openNavTarget(
+  target: AdminNavTarget,
+  nextQuery?: Record<string, string>,
+) {
+  const query = nextQuery ?? target.query ?? route.query;
+  if (
+    normalizeAdminPath(route.path) === normalizeAdminPath(target.toUri) &&
+    sameNavQuery(query)
+  ) {
+    return;
+  }
+  // exactOptionalPropertyTypes 下 params 不接受 undefined，仅在存在时传入。
+  if (target.params) {
+    await router.push({ name: target.name, params: target.params, query });
+    return;
+  }
+  await router.push({ name: target.name, query });
+}
+
+/**
+ * 整行点击数据库项：不在该库页面时先进入该库并展开数据表，
+ * 已在该库页面时只切换数据表的展开/收起。
+ */
+async function activateDatabaseRow(child: AdminNavChild) {
+  // 停留在该库的数据表明细视图（`?table=`）时，路径虽然已经命中，
+  // 但必须清除 `?table=` 才能回到该库的表清单，因此与跨库点击同样导航。
+  if (!isNavTargetActive(child.toUri) || currentTableName() !== "") {
+    expandedDatabaseItems[child.id] = true;
+    await openNavTarget(child, {});
+    return;
+  }
+  toggleDatabaseItem(child.id);
+}
+
+/** 点击数据表：进入所属数据库页面并用 `?table=` 定位该表。 */
+async function openTableNav(table: AdminNavTableLink) {
+  await openNavTarget(
+    {
+      id: table.id,
+      toUri: table.toUri,
+      name: table.name,
+      params: table.params,
+      label: table.label,
+      subtitle: t("layouts.adminNav.databaseTablesSub"),
+    },
+    table.query,
   );
 }
 
-const currentAdminNavItem = computed(() =>
-  resolveAdminNavItem(currentAdminPath.value),
-);
+/** 分组项没有可跳转目标，点击时只切换下拉菜单。 */
+function openNavItem(item: AdminNavItem): void {
+  const link = navLinkOf(item);
+  if (link) {
+    void openNavTarget(link);
+  }
+}
 
 watch(
   () => route.fullPath,
   () => {
-    openCurrentAdminSection();
+    openCurrentNavPath();
+    // “数据库”下拉子菜单需要目录数据，首次进入或上次失败时补一次加载。
+    if (databaseCatalog.status !== "ready" && !databaseCatalog.isLoading) {
+      void databaseCatalog.ensureLoaded().catch(() => undefined);
+    }
   },
   { immediate: true },
 );
 
-const isActiveNavItem = (id: string): boolean => {
-  const navItem = adminNavItemById[id];
-  if (!navItem) {
-    return false;
-  }
-  return isNavItemActive(navItem, currentAdminPath.value);
-};
-
-const showPage = async (pageId: string) => {
-  const navItem = adminNavItemById[pageId];
-  if (!navItem) {
-    return;
-  }
-  if (route.path !== navItem.toUri) {
-    await router.push({
-      path: navItem.toUri,
-      query: route.query,
-    });
-  }
-};
-
-const headerTitle = computed(() =>
-  currentAdminNavItem.value
-    ? t(`layouts.adminNav.${currentAdminNavItem.value.titleKey}`)
-    : t("layouts.adminTitle"),
+// 目录是异步加载的：数据到位后需要重新定位当前库，深链才能自动展开。
+watch(
+  () =>
+    databaseChildren.value
+      .map((child) => child.id)
+      .join("|"),
+  () => {
+    openCurrentNavPath();
+  },
 );
 
-const headerSubtitle = computed(() =>
-  currentAdminNavItem.value
-    ? t(`layouts.adminNav.${currentAdminNavItem.value.subtitleKey}`)
-    : t("layouts.adminNav.usersSub"),
+/**
+ * 仅对展开中的数据库按需请求表清单。用 NUL 拼接成字符串键，
+ * 避免目录重新加载产生同名新数组时触发重复请求。
+ */
+const expandedDatabaseNames = computed<string>(() =>
+  databaseChildren.value
+    .filter((child) => isDatabaseItemExpanded(child.id))
+    .map((child) => child.label)
+    .join("\u0000"),
+);
+
+watch(
+  expandedDatabaseNames,
+  (joined) => {
+    for (const name of joined.split("\u0000")) {
+      if (!name) {
+        continue;
+      }
+      if (databaseCatalog.tableStatusOf(name) === "ready") {
+        continue;
+      }
+      void databaseCatalog.ensureTablesLoaded(name).catch(() => undefined);
+    }
+  },
+  { immediate: true },
+);
+
+const headerTitle = computed(
+  () => currentNavTarget.value?.label ?? t("layouts.adminTitle"),
+);
+
+const headerSubtitle = computed(
+  () => currentNavTarget.value?.subtitle ?? t("layouts.adminNav.usersSub"),
 );
 </script>

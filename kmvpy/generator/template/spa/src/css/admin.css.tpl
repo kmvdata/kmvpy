@@ -246,6 +246,98 @@
   transform: rotate(90deg);
 }
 
+/* 一级导航行：链接 + 可选的子菜单展开按钮 */
+.signal-tracker-page.signal-tracker-admin .admin-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-row__link {
+  flex: 1;
+  min-width: 0;
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-row__toggle {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+/* 仅展开下拉菜单的分组项（如“数据库”） */
+.signal-tracker-page.signal-tracker-admin .admin-nav-row__group:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-1) 50%, transparent);
+  outline-offset: 2px;
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-row__group-chevron {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+/* 数据库子菜单：识别到的每个数据库一项 */
+.signal-tracker-page.signal-tracker-admin .admin-nav-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 4px 10px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-children--nested {
+  margin-left: 14px;
+  padding-left: 6px;
+}
+
+.signal-tracker-page.signal-tracker-admin .nav-item.admin-nav-child {
+  gap: 6px;
+  padding: 6px 8px;
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-child__dot {
+  width: 14px;
+  height: 14px;
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-child__label {
+  font-size: var(--spa-font-size-small);
+  overflow-wrap: anywhere;
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-child__meta {
+  flex-shrink: 0;
+  color: var(--workspace-text-muted);
+  font-size: var(--spa-font-size-overline);
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-empty {
+  padding: 6px 10px 6px 32px;
+  color: var(--workspace-text-muted);
+  font-size: var(--spa-font-size-small);
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-empty--nested {
+  padding: 4px 8px 4px 22px;
+  font-size: var(--spa-font-size-overline);
+}
+
+/* 三级菜单：数据库下的每张数据表 */
+.signal-tracker-page.signal-tracker-admin .nav-item.admin-nav-leaf {
+  gap: 6px;
+  padding: 5px 8px;
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-leaf__icon {
+  width: 14px;
+  height: 14px;
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-leaf__label {
+  font-size: var(--spa-font-size-overline);
+  overflow-wrap: anywhere;
+}
+
 .signal-tracker-page.signal-tracker-admin .admin-layout__avatar-trigger {
   flex-shrink: 0;
 }

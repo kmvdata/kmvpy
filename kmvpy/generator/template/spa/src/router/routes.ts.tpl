@@ -165,10 +165,18 @@ const routes: RouteRecordRaw[] = [
           import("../pages/admin/system/AdminSystemSettingsPage.vue"),
       },
       {
-        path: "database-tables",
+        path: "database",
+        redirect: { name: "admin-users" },
+      },
+      {
+        path: "database/:databaseName",
         name: "admin-database-tables",
         component: () =>
-          import("../pages/admin/system/AdminDatabaseTablesPage.vue"),
+          import("../pages/admin/database/AdminDatabaseTablesPage.vue"),
+      },
+      {
+        path: "database-tables",
+        redirect: { name: "admin-users" },
       },
     ],
   },

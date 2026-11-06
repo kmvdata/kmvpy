@@ -6,6 +6,7 @@
 
 import hashlib
 import secrets
+from collections.abc import Callable
 from typing import Any
 
 from kmvpy.common.infra import init_tables_by_orms
@@ -92,24 +93,139 @@ async def init_tables():
         raise
 
 
-def _table_row_count(sync_conn, table_name: str) -> int | None:
+def _savepoint_call(
+    sync_conn,
+    description: str,
+    action: Callable[[], Any],
+    default: Any,
+) -> Any:
+    """在 SAVEPOINT 内执行可能失败的内省语句。
+
+    PostgreSQL 中任一语句失败都会把当前事务标记为 aborted，此后同一事务内的
+    其它语句一律被拒绝（InFailedSQLTransactionError）。因此单表读取失败必须
+    回滚到保存点，才能在跳过该表后继续读取其余表，而不是让整次内省失败。
+    """
+    savepoint = sync_conn.begin_nested()
     try:
+        result = action()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("%s 失败: %s", description, exc)
+        # 必须显式 ROLLBACK TO SAVEPOINT，才能让 PostgreSQL 事务脱离 aborted 状态。
+        try:
+            savepoint.rollback()
+        except Exception as rollback_exc:  # noqa: BLE001
+            logger.warning("%s 回滚保存点失败: %s", description, rollback_exc)
+        return default
+    savepoint.commit()
+    return result
+
+
+def _table_row_count(sync_conn, table_name: str) -> int | None:
+    def _count() -> int:
         table = Table(table_name, MetaData(), autoload_with=sync_conn)
         return int(
             sync_conn.execute(select(func.count()).select_from(table)).scalar_one()
         )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("读取表 %s 行数失败: %s", table_name, exc)
-        return None
+
+    return _savepoint_call(sync_conn, f"读取表 {table_name} 行数", _count, None)
 
 
-def _table_comment(inspector, table_name: str) -> str | None:
-    try:
-        comment = inspector.get_table_comment(table_name)
-    except Exception:
-        return None
+def _table_comment(sync_conn, inspector, table_name: str) -> str | None:
+    comment = _savepoint_call(
+        sync_conn,
+        f"读取表 {table_name} 注释",
+        lambda: inspector.get_table_comment(table_name),
+        None,
+    )
     text_value = comment.get("text") if isinstance(comment, dict) else None
     return text_value if isinstance(text_value, str) and text_value else None
+
+
+def _table_structure(
+    sync_conn,
+    inspector,
+    table_name: str,
+) -> dict[str, Any]:
+    """读取单表列、主键、索引与唯一约束；失败时返回降级结构。"""
+
+    def _collect() -> dict[str, Any]:
+        columns = inspector.get_columns(table_name)
+        pk_constraint = inspector.get_pk_constraint(table_name) or {}
+        pk_column_names = [
+            str(name)
+            for name in pk_constraint.get("constrained_columns") or []
+            if name
+        ]
+        pk_columns = set(pk_column_names)
+        pk_name = str(pk_constraint.get("name") or "PRIMARY")
+        index_columns: set[str] = set()
+        unique_columns: set[str] = set()
+        # 索引清单与列上的 indexed/unique 标记来自同一次内省，不额外建连。
+        indexes: list[dict[str, Any]] = []
+        if pk_column_names:
+            indexes.append(
+                {
+                    "name": pk_name,
+                    "columns": pk_column_names,
+                    "unique": True,
+                    "primary": True,
+                }
+            )
+        for index in inspector.get_indexes(table_name):
+            index_name = str(index.get("name") or "")
+            names = [str(name) for name in index.get("column_names") or [] if name]
+            index_columns.update(names)
+            if index.get("unique"):
+                unique_columns.update(names)
+            # MySQL 会把主键作为 PRIMARY 索引一并返回，避免与上面条目重复。
+            if not names or index_name == pk_name:
+                continue
+            indexes.append(
+                {
+                    "name": index_name,
+                    "columns": names,
+                    "unique": bool(index.get("unique")),
+                    "primary": False,
+                }
+            )
+        for unique_constraint in inspector.get_unique_constraints(table_name):
+            unique_columns.update(
+                str(name)
+                for name in unique_constraint.get("column_names") or []
+                if name
+            )
+
+        return {
+            "table_name": table_name,
+            "comment": _table_comment(sync_conn, inspector, table_name),
+            "row_count": _table_row_count(sync_conn, table_name),
+            "columns": [
+                {
+                    "name": str(column.get("name", "")),
+                    "type": str(column.get("type", "")),
+                    "nullable": bool(column.get("nullable", True)),
+                    "primary_key": str(column.get("name", "")) in pk_columns,
+                    "indexed": str(column.get("name", "")) in index_columns,
+                    "unique": str(column.get("name", "")) in unique_columns,
+                }
+                for column in columns
+            ],
+            "indexes": indexes,
+        }
+
+    fallback = {
+        "table_name": table_name,
+        "comment": None,
+        "row_count": None,
+        "columns": [],
+        "indexes": [],
+    }
+    return _savepoint_call(
+        sync_conn,
+        f"读取表 {table_name} 结构",
+        _collect,
+        fallback,
+    )
 
 
 def _inspect_database_tables(
@@ -119,40 +235,11 @@ def _inspect_database_tables(
     inspector = sa_inspect(sync_conn)
     tables: list[dict[str, Any]] = []
     for table_name in sorted(inspector.get_table_names()):
-        columns = inspector.get_columns(table_name)
-        pk_constraint = inspector.get_pk_constraint(table_name) or {}
-        pk_columns = set(pk_constraint.get("constrained_columns") or [])
-        index_columns: set[str] = set()
-        unique_columns: set[str] = set()
-        for index in inspector.get_indexes(table_name):
-            names = index.get("column_names") or []
-            index_columns.update(str(name) for name in names if name)
-            if index.get("unique"):
-                unique_columns.update(str(name) for name in names if name)
-        for unique_constraint in inspector.get_unique_constraints(table_name):
-            unique_columns.update(
-                str(name)
-                for name in unique_constraint.get("column_names") or []
-                if name
-            )
-
+        structure = _table_structure(sync_conn, inspector, table_name)
         tables.append(
             {
-                "table_name": table_name,
+                **structure,
                 "registered": table_name in registered_table_names,
-                "comment": _table_comment(inspector, table_name),
-                "row_count": _table_row_count(sync_conn, table_name),
-                "columns": [
-                    {
-                        "name": str(column.get("name", "")),
-                        "type": str(column.get("type", "")),
-                        "nullable": bool(column.get("nullable", True)),
-                        "primary_key": str(column.get("name", "")) in pk_columns,
-                        "indexed": str(column.get("name", "")) in index_columns,
-                        "unique": str(column.get("name", "")) in unique_columns,
-                    }
-                    for column in columns
-                ],
             }
         )
     return tables
