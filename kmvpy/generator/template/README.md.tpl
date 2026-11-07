@@ -95,7 +95,7 @@ kmvpy rotate-jwt-keys app/etc/release/config.yaml
 当前后端工程位于 `__PY_PROJECT_NAME__/`。它的 `pyproject.toml` 依赖 PyPI 上发布的 KMVPy：
 
 ```toml
-kmvpy>=0.2.1
+kmvpy[mysql]>=0.2.3,<0.3
 ```
 
 如果你的环境没有这个本地路径，需要先安装可用的 KMVPy 包或调整依赖来源。
@@ -105,9 +105,11 @@ kmvpy>=0.2.1
 ```bash
 cd __PY_PROJECT_NAME__
 conda activate kmvpy   # 或任意已安装本项目依赖的 Conda 环境
-python -m pip install -e ".[postgresql]"
+python -m pip install -e "."
 python app/run.py
 ```
+
+运行依赖已包含 MySQL、PostgreSQL、SQLite 异步驱动。测试环境使用 `python -m pip install -e ".[test]"`，安装 pytest 与 HTTP/Socket.IO 测试客户端。旧的 `mysql`、`postgresql`、`sqlite`、`all` 项目 extra 已合并到默认依赖，切换数据库只需修改数据库 URL。
 
 默认配置读取 `__PY_PROJECT_NAME__/app/etc/develop/config.yaml`。也可以通过环境变量指定配置：
 
@@ -257,10 +259,8 @@ auth_config:
 - PyJWT
 - Socket.IO
 - PyYAML
-- OpenAI SDK
 - asyncpg
 - aiosqlite
-- Cassandra driver
 - Quasar / Vue 3 / TypeScript / Vite
 
 ## 开发流程

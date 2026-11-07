@@ -44,7 +44,7 @@ class UserSocketService:
     _user_kid_to_sids: dict[int, set[str]] = {}
     _sid_expire_tasks: dict[str, asyncio.Task] = {}
     _user_socket_redis_client: Any | None = None
-    _user_socket_redis_client_key: tuple[str, int, int, str | None, bool] | None = None
+    _user_socket_redis_client_key: tuple[str, int, int, str | None, str | None, bool] | None = None
     _presence_refresh_task: asyncio.Task[None] | None = None
 
 
@@ -118,7 +118,7 @@ class UserSocketService:
         socket_manager = UserSocketService._socketio()
         if socket_manager is None:
             return None
-        return getattr(socket_manager, "_sio", socket_manager)
+        return getattr(socket_manager, "server", socket_manager)
 
     @staticmethod
     def _user_redis_config(config: Any | None = None):
@@ -153,6 +153,7 @@ class UserSocketService:
             str(getattr(redis_config, "host")),
             int(getattr(redis_config, "port")),
             int(getattr(redis_config, "db")),
+            getattr(redis_config, "username", None) or None,
             getattr(redis_config, "password", None),
             bool(getattr(redis_config, "decode_responses", True)),
         )
@@ -166,16 +167,22 @@ class UserSocketService:
             host=client_key[0],
             port=client_key[1],
             db=client_key[2],
-            password=client_key[3],
-            decode_responses=client_key[4],
+            username=client_key[3],
+            password=client_key[4],
+            decode_responses=client_key[5],
+            protocol=2,
         )
         UserSocketService._user_socket_redis_client_key = client_key
         return UserSocketService._user_socket_redis_client
 
     @staticmethod
     def _redis_url(redis_config: Any) -> str:
+        username = getattr(redis_config, "username", None)
         password = getattr(redis_config, "password", None)
-        auth_part = f":{quote(str(password), safe='')}@" if password else ""
+        if username:
+            auth_part = f"{quote(str(username), safe='')}:{quote(str(password or ''), safe='')}@"
+        else:
+            auth_part = f":{quote(str(password), safe='')}@" if password else ""
         host = getattr(redis_config, "host")
         port = int(getattr(redis_config, "port"))
         db = int(getattr(redis_config, "db"))
@@ -210,6 +217,7 @@ class UserSocketService:
         manager = socketio.AsyncRedisManager(
             redis_url,
             channel=UserSocketService._DISTRIBUTED_CHANNEL,
+            redis_options={"protocol": 2},
         )
         raw_server.manager = manager
         raw_server.manager.set_server(raw_server)

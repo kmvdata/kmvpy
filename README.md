@@ -10,7 +10,7 @@
   <img src="https://raw.githubusercontent.com/kmvdata/kmvpy/main/assets/kmvpy-header.svg" alt="KMVPy header" width="640" />
 </p>
 
-A **FastAPI**-based server-side foundation library: YAML-driven configuration, async SQLAlchemy domain layer, unified response and exception handling, JWT, APScheduler scheduling, Socket.IO, and an **engineering scaffold** (Python + frontend sub-projects, YAML smoke-test skeletons). Default dependencies already include Web, async SQLite/PostgreSQL, Redis, Cassandra drivers, PyJWT, OpenAI SDK and more; **MySQL** requires an extra optional dependency.
+A **FastAPI**-based server-side foundation library: YAML-driven configuration, async SQLAlchemy domain layer, unified response and exception handling, JWT, APScheduler scheduling, Socket.IO, and an **engineering scaffold** (Python + frontend sub-projects and realtime test fixtures). Default dependencies already include Web, async SQLite/PostgreSQL, Redis, PyJWT and Socket.IO; **MySQL** requires an extra optional dependency.
 
 ## Core Modules (Framework Capabilities)
 
@@ -23,7 +23,7 @@ A **FastAPI**-based server-side foundation library: YAML-driven configuration, a
 | **`kmvpy.common.exception`** | `KmvException`, `KmvError`: business error codes and message conventions. |
 | **`kmvpy.common.schedule`** | APScheduler-based async scheduling: `ScheduleManager`, `schedule_task` decorator, global scheduler lifecycle (hooked to ASGI startup). |
 | **`kmvpy.common.kmv`** | `kosmos`: in-process config, Socket.IO and other existing runtime mount points; Storage is explicitly held by the app and passed to `init_asgi_app`. |
-| **`kmvpy.common.st`** | Smoke-test skeleton: `StBasePyTest`, `StTestCase`, YAML steps and expectations (used by the generated project's `st_test`). |
+| **`kmvpy.common.st`** | Smoke-test skeleton: `StBasePyTest`, `StTestCase`, YAML steps and expectations (for project-defined YAML API tests; install the `test` extra). |
 | **`kmvpy.core.main.service`** | JWT (multiple algorithms, user-info payload, etc.; see the module). |
 | **`kmvpy.core.main.router`** | Socket.IO and FastAPI app binding. |
 | **`kmvpy.generator`** | CLI: `kmvpy create` / `kmvpy update` / `kmvpy rotate-jwt-keys`; generates projects and supports JWT key rotation; see `kmvpy/generator/README.md`. |
@@ -31,11 +31,11 @@ A **FastAPI**-based server-side foundation library: YAML-driven configuration, a
 ## Default Dependencies and Optional Extras
 
 - **Declared in:** `pyproject.toml` (PEP 517 / PEP 621, setuptools build backend).
-- **Optional:** `[project.optional-dependencies]` currently provides **`mysql`** (`mysqlclient`, `aiomysql`, etc.); the rest of Web/Redis/SocketIO etc. live in the default `dependencies`.
+- **Optional:** `mysql` installs the async MySQL driver (`aiomysql`); `multipart` enables form/file parsing; `test` installs the smoke-test runner and HTTP/Socket.IO clients; `dev` provides build and package validation tools. SQLite, PostgreSQL, Redis and Socket.IO remain in the default dependencies.
 
 ## Tech Stack (excerpt)
 
-FastAPI · Uvicorn · Pydantic v2 · SQLAlchemy 2 (async) · Redis · APScheduler · python-i18n · PyYAML · PyJWT · fastapi-socketio · asyncpg / aiosqlite · cassandra-driver · OpenAI SDK
+FastAPI · Uvicorn · Pydantic v2 · SQLAlchemy 2 (async) · Redis · APScheduler · python-i18n · PyYAML · PyJWT · python-socketio · asyncpg / aiosqlite
 
 ## Typical Use Cases
 
@@ -47,11 +47,15 @@ REST/realtime hybrid APIs, microservice foundations with unified config and erro
 
 **Environment:** Python ≥ 3.11
 
+**Platforms:** Use 64-bit Python on Windows. Intel macOS uses a legacy cryptography 48.x compatibility range, which is no longer covered by upstream security maintenance; other supported platforms use 50.x. See [dependency policy and migration](https://github.com/kmvdata/kmvpy/blob/main/docs/DEPENDENCIES.md).
+
 > **Release status (2026-09-08):** The PyPI project index currently does not list `kmvpy`, but this repository has not shipped its first release yet. Until the first version is actually published, please use the local installation methods below. Maintainer actions: see the [PyPI first-release guide](https://github.com/kmvdata/kmvpy/blob/main/docs/PUBLISHING.md).
 
 **Local install:** `pip install .` · Development: `pip install -e .` · With MySQL: `pip install ".[mysql]"`
 
 **PyPI install (after first release):** `pip install kmvpy` · With MySQL: `pip install "kmvpy[mysql]"`
+
+For smoke tests, install `pip install -e ".[test]"`; for package development, install `pip install -e ".[test,dev]"`. Form or upload endpoints additionally require `pip install ".[multipart]"`.
 
 **Build:** `python -m pip install -U build twine && python -m build && python -m twine check --strict dist/*` → artifacts land in `dist/`; prefer the **wheel** for distribution/install. Offline install from `tar.gz` only, while avoiding build dependencies: `pip install --no-build-isolation --no-deps dist/kmvpy-0.2.3.tar.gz`.
 
@@ -97,7 +101,7 @@ Place this snippet under the corresponding config layer. When `username` is conf
 
 ### Packaging and Local Installation (detailed)
 
-The commands below run from the repository root (the directory containing `pyproject.toml`); the build is driven by setuptools via PEP 517 and artifacts are written to `dist/`. The first build needs network access for build-tool dependencies (`setuptools`, `wheel`); subsequent builds hit the local cache.
+The commands below run from the repository root (the directory containing `pyproject.toml`); the build is driven by setuptools via PEP 517 and artifacts are written to `dist/`. The first build needs network access for build-tool dependencies (`setuptools>=77.0.3`); subsequent builds hit the local cache.
 
 **① Prepare build and validation tools (one-time)**
 
@@ -117,7 +121,7 @@ Artifacts (the version comes solely from `kmvpy/__init__.py`'s `__version__`; cu
 
 | Artifact | Description | Recommended Use |
 |------|------|----------|
-| `dist/kmvpy-0.2.3-py3-none-any.whl` | wheel, pure Python, no platform limits | **Preferred**: install, deliver, offline distribution |
+| `dist/kmvpy-0.2.3-py3-none-any.whl` | Pure Python library wheel; runtime dependencies determine platform support | **Preferred**: install, deliver, offline distribution |
 | `dist/kmvpy-0.2.3.tar.gz` | sdist source package | source audit, repackaging |
 
 The wheel ships the scaffold templates and nginx templates (collected via `MANIFEST.in` + `include-package-data`), so after installation `kmvpy create / update` can generate or update projects directly without manually copying templates from the repository.
@@ -128,7 +132,7 @@ Option A: install directly from the source directory (builds on site, then insta
 
 ```bash
 pip install .
-# when MySQL drivers (mysqlclient / aiomysql) are needed:
+# when the async MySQL driver (aiomysql) are needed:
 pip install ".[mysql]"
 ```
 

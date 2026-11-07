@@ -1,21 +1,9 @@
-import contextlib
-import datetime
-
 from datetime import datetime, date
 from decimal import Decimal
 from enum import Enum
 from typing import Union, Optional
 from pydantic import BaseModel
 from sqlalchemy.sql.sqltypes import BigInteger as SABigInteger
-
-# try:
-#     from cassandra.cqlengine.models import Model
-#     from cassandra.util import Date
-# except ModuleNotFoundError as e:
-#     print(e)
-
-with contextlib.suppress(Exception):
-    pass
 
 default_ignores: set[str] = {
     'id',

@@ -162,7 +162,7 @@ echo "==> pip install -U --no-deps --force-reinstall $WHEEL"
 "$PYTHON" -m pip install -U --no-deps --force-reinstall "$WHEEL"
 
 echo "==> 安装固定 kmvpy 版本: ${KMVPY_VERSION}"
-"$PYTHON" -m pip install --force-reinstall "kmvpy==${KMVPY_VERSION}"
+"$PYTHON" -m pip install --force-reinstall "kmvpy[mysql]==${KMVPY_VERSION}"
 INSTALLED_KMVPY_VERSION="$("$PYTHON" -c 'import kmvpy; print(kmvpy.__version__)')"
 [[ "$INSTALLED_KMVPY_VERSION" == "$KMVPY_VERSION" ]] ||
   die "kmvpy 版本校验失败：期望 ${KMVPY_VERSION}，实际 ${INSTALLED_KMVPY_VERSION}"

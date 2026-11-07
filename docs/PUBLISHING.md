@@ -107,10 +107,13 @@ maintainers = [{name = "kermit.mei", email = "kermit.mei@gmail.com"}]
 python -m venv .venv-release
 source .venv-release/bin/activate
 python -m pip install --upgrade pip build twine
+python -m pip install -e ".[test,dev,mysql,multipart]"
 python -m pytest
 python -m build
 python -m twine check --strict dist/*
 ```
+
+`test` extra 声明 pytest 与 HTTP/Socket.IO 测试客户端，`dev` 提供构建与打包校验工具；`mysql` 安装 aiomysql；`multipart` 用于表单与文件上传。发布前应在支持的 Python 版本上分别安装和执行测试，并使用 `python -m pip check` 检查依赖关系。构建后还应在新环境中正常安装 wheel（允许解析依赖），导入配置、ASGI 入口、冒烟测试模块，执行 SQLite 异步查询及 `/ws/socket.io` 握手；仅 `--no-deps` 安装与 `import kmvpy` 无法覆盖运行依赖。
 
 当前版本的唯一来源是 `kmvpy/__init__.py` 中的 `__version__`，`pyproject.toml` 会自动读取它。每次发布必须使用一个从未上传过的新版本号；PyPI 不允许覆盖同一版本已有的文件。
 

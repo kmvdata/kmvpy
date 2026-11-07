@@ -83,6 +83,7 @@ class AuthSessionService:
             username=redis_config.username,
             password=redis_config.password,
             decode_responses=redis_config.decode_responses,
+            protocol=2,
         )
         cls._redis_clients[auth_role] = client
         return client

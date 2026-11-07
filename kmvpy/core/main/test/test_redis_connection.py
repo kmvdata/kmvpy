@@ -78,10 +78,10 @@ def test_redis_connections_authenticate_from_config(
     assert connection.port == 6380
     assert connection.db == 3
     assert connection.encoder.decode_responses is False
+    assert connection.protocol == 2
 
     # Run redis-py's real authentication handshake with only the transport mocked.
     # RESP2 makes the distinction between AUTH password and AUTH username password explicit.
-    connection.protocol = 2
     monkeypatch.setattr(connection, "_parser", Mock())
     send_command = AsyncMock()
     monkeypatch.setattr(type(connection), "send_command", send_command)

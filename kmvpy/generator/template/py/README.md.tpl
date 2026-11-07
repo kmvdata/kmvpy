@@ -17,8 +17,10 @@
 ```bash
 cd __PY_PROJECT_NAME__
 conda activate kmvpy   # 或任意已安装本项目依赖的 Conda 环境
-python -m pip install -e ".[postgresql]"
+python -m pip install -e "."
 ```
+
+默认运行依赖已包含 MySQL、PostgreSQL 和 SQLite 异步驱动。运行测试前执行 `python -m pip install -e ".[test]"` 安装 pytest 与 HTTP/Socket.IO 测试客户端。
 
 然后在 Cursor 中执行 `Python: Select Interpreter`，选择已激活的 Conda 环境解释器，并启动应用：
 
@@ -45,8 +47,10 @@ Activate a Conda environment and install the runtime dependencies (this project 
 ```bash
 cd __PY_PROJECT_NAME__
 conda activate kmvpy   # or any Conda environment with the project dependencies installed
-python -m pip install -e ".[postgresql]"
+python -m pip install -e "."
 ```
+
+Runtime dependencies include async MySQL, PostgreSQL and SQLite drivers. Before running tests, install pytest and HTTP/Socket.IO test clients with `python -m pip install -e ".[test]"`.
 
 Run `Python: Select Interpreter` in Cursor, select the interpreter of the activated Conda environment, and start the application:
 

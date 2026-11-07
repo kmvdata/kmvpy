@@ -11,9 +11,9 @@ import yaml
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from fastapi import FastAPI
-from fastapi_socketio import SocketManager
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, computed_field, field_validator, model_validator
 
+from kmvpy.common.socketio import SocketManager
 from kmvpy.common.tool.logger import logger
 
 # 仅支持 Python >= 3.11：使用内置日志级别映射
@@ -127,6 +127,7 @@ class ServiceConfig(BaseModel):
 
         return SocketManager(
             app=app,
+            mount_location=self.socketio_config.mount_location,
             socketio_path=self.socketio_config.socketio_path,
             cors_allowed_origins=self.socketio_config.cors_allowed_origins
         )

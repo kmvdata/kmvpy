@@ -144,14 +144,16 @@ def parse_gitignore_patterns(
         pattern = _strip_gitignore_line(raw_pattern)
         if not pattern or pattern.startswith("#"):
             continue
-        if pattern.startswith("\\#") or pattern.startswith("\\!"):
-            pattern = pattern[1:]
 
+        # A leading escaped bang names a literal file; only an unescaped bang
+        # reverses an earlier exclusion. Determine this before unescaping it.
         negated = pattern.startswith("!")
         if negated:
             pattern = pattern[1:]
             if not pattern:
                 continue
+        if pattern.startswith("\\#") or pattern.startswith("\\!"):
+            pattern = pattern[1:]
 
         directory_only = pattern.endswith("/")
         if directory_only:

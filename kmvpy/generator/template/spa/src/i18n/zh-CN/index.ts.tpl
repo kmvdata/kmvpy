@@ -200,7 +200,7 @@ export default {
         enterSisyphusPy: "cd __PY_PROJECT_NAME__",
         createCondaEnv: "conda create -y -n kmvpy python=3.11",
         activateCondaEnv: "conda activate kmvpy",
-        installRepo: 'python -m pip install -e ".[postgresql]"',
+        installRepo: 'python -m pip install -e "."',
         runRepo: "python app/run.py",
         enterSpa: "cd __SPA_PROJECT_NAME__",
         bunInstall: "bun install",

@@ -101,13 +101,10 @@ from kmvpy.common.infra.korm_storage import KOrmStorage
 from kmvpy.common.exception.kmv_exception import KmvException
 from kmvpy.common.kmv import kosmos
 from kmvpy.common.response import ApiResponse
+from kmvpy.common.socketio import SocketManager
 from kmvpy.common.tool.logger import init_logger, logger
 from kmvpy.core.main.router.socketio import socketio_bind_router
 from kmvpy.core.main.service.auth_session_service import AuthSessionService
-
-with contextlib.suppress(Exception):
-    from fastapi_socketio import SocketManager
-
 
 def _build_lifespan(storage: KOrmStorage):
     @contextlib.asynccontextmanager
@@ -140,6 +137,10 @@ def _build_lifespan(storage: KOrmStorage):
                 if schedule_manager is not None:
                     await schedule_manager.shutdown()
                     logger.info('定时任务调度器已关闭')
+            with contextlib.suppress(Exception):
+                socket_manager = getattr(app.state, "socketio_manager", None)
+                if socket_manager is not None:
+                    await socket_manager.shutdown()
             with contextlib.suppress(Exception):
                 await storage.dispose()
 
@@ -235,8 +236,9 @@ def init_asgi_app(
 
     # 初始化socketio
     try:
-        socketio = SocketManager(
-            app=app, mount_location='/ws', socketio_path='/socket.io', cors_allowed_origins=[])
+        socketio = config.service.gen_socket_manager(app) if config.service else None
+        if socketio is None:
+            socketio = SocketManager(app=app, cors_allowed_origins=[])
         kosmos.socketio = socketio
         socketio_bind_router(socketio=socketio, storage=resolved_storage)
     except Exception as e:

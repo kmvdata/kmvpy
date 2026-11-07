@@ -400,7 +400,9 @@ class KOrmStorage:
         try:
             import redis.asyncio as redis
 
-            self._redis_client_instance = redis.Redis(**self.redis_config.model_dump())
+            self._redis_client_instance = redis.Redis(
+                **self.redis_config.model_dump(), protocol=2
+            )
             return self._redis_client_instance
         except (NameError, ModuleNotFoundError, ImportError) as e:
             logger.error(e)

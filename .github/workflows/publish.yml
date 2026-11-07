@@ -8,8 +8,12 @@ permissions:
   contents: read
 
 jobs:
+  compatibility:
+    uses: ./.github/workflows/compatibility.yml
+
   build:
     name: Build and validate distributions
+    needs: compatibility
     runs-on: ubuntu-latest
 
     steps:
@@ -46,9 +50,11 @@ jobs:
         shell: bash
         run: |
           python -m venv /tmp/kmvpy-wheel-test
-          /tmp/kmvpy-wheel-test/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/kmvpy-wheel-test/bin/python -m pip install dist/*.whl
+          /tmp/kmvpy-wheel-test/bin/python -m pip check
           cd /tmp
           /tmp/kmvpy-wheel-test/bin/python -c 'import kmvpy; print(kmvpy.__version__)'
+          /tmp/kmvpy-wheel-test/bin/python -c 'from kmvpy.common.conf import BaseConfig; from kmvpy.core.main import init_asgi_app; from zoneinfo import ZoneInfo; assert ZoneInfo("Asia/Shanghai")'
           /tmp/kmvpy-wheel-test/bin/python -c 'from importlib.resources import files; assert files("kmvpy.generator").joinpath("template", "README.md.tpl").is_file()'
           /tmp/kmvpy-wheel-test/bin/python -c 'from importlib.metadata import distribution; scripts = {entry.name: entry.value for entry in distribution("kmvpy").entry_points if entry.group == "console_scripts"}; assert scripts == {"kmvpy": "kmvpy.generator.cli:main"}, scripts'
 

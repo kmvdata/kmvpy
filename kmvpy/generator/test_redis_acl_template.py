@@ -60,9 +60,10 @@ def test_generated_socket_redis_credentials(socket_service, monkeypatch, credent
     try:
         assert socket_service._user_redis_client() is client
         connection = client.connection_pool.make_connection()
-        assert connection.username == config.username
+        assert connection.username == (config.username or None)
         assert connection.password == config.password
         assert connection.db == 1
+        assert connection.protocol == 2
 
         url = socket_service._redis_url(config)
         assert url == expected_url
@@ -95,3 +96,11 @@ def test_generated_socket_recreates_client_when_acl_username_changes(socket_serv
 def test_generated_socket_url_accepts_legacy_config_without_username(socket_service) -> None:
     config = SimpleNamespace(host="localhost", port=6379, db=0, password="p@ss:/% word")
     assert socket_service._redis_url(config) == "redis://:p%40ss%3A%2F%25%20word@localhost:6379/0"
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_generated_socket_accepts_public_framework_server(socket_service, monkeypatch, wrapped) -> None:
+    server = SimpleNamespace()
+    adapter = SimpleNamespace(server=server) if wrapped else server
+    monkeypatch.setattr(socket_service, "_socketio", staticmethod(lambda: adapter))
+    assert socket_service._raw_socketio_server() is server

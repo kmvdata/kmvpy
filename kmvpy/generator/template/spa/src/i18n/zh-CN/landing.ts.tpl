@@ -120,10 +120,8 @@ export default {
     pyjwt: "PyJWT",
     socketio: "Socket.IO",
     pyyaml: "PyYAML",
-    openai: "OpenAI SDK",
     asyncpg: "asyncpg",
     aiosqlite: "aiosqlite",
-    cassandra: "Cassandra driver",
   },
   status: {
     python: "运行时要求",

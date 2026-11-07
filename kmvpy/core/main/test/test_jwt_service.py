@@ -97,7 +97,7 @@ def test_jwt_verify_rejects_wrong_typ_alg_token_type_and_role() -> None:
 
     wrong_alg = jwt.encode(
         payload,
-        "secret",
+        "s" * 32,
         algorithm="HS256",
         headers={"typ": "at+jwt", "kid": jwt_config.active_kid},
     )

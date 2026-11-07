@@ -1,46 +1,24 @@
 # `kmvpy.generator`
 
-`kmvpy.generator` 会生成一套开箱即用的项目骨架，其中 Python 子项目默认内置一套适合在 Cursor 中使用的自动化冒烟测试框架。
+`kmvpy create` 生成 Python 后端、Quasar/Vue SPA、编辑器配置、部署脚本和实时连接验收用例。要求 Python >= 3.11。
 
-这套框架的目标不是做重型集成测试，而是用最少的样板代码完成以下事情：
-
-- 启动生成后的 FastAPI 应用
-- 通过 `pytest` 执行接口冒烟测试
-- 用 YAML 描述测试步骤和期望结果
-- 在测试类里用少量 hook 处理鉴权、动态请求参数、步骤间状态传递
-
-## 生成后的目录
-
-执行：
+## 创建工程与目录
 
 ```bash
 kmvpy create demo_project -d /tmp
 ```
 
-会得到：
-
-```text
-/tmp/demo_project/
-├── .vscode/
-├── demo_project_py/
-│   ├── pyproject.toml
-│   ├── README.md
-│   ├── app/
-│   │   ├── run.py
-│   │   ├── etc/
-│   │   │   ├── develop/config.yaml
-│   │   │   └── release/config.yaml
-│   │   └── st_test/
-│   │       ├── conftest.py
-│   │       ├── test_health_router.py
-│   │       ├── test_health_router.yaml
-│   │       ├── test_user_opt_router.py
-│   │       └── test_user_opt_router.yaml
-│   └── demo_project/
-└── demo_project_spa/
-```
-
-其中自动化冒烟测试相关文件都在 `PROJECT_NAME_py/app/st_test/` 下。
+| 生成路径 | 内容 |
+| --- | --- |
+| `.vscode/` | Cursor / VS Code 解释器、导入路径和启动配置 |
+| `.agents/skills/` | 后端与前端开发指南及 reference |
+| `demo_project_py/pyproject.toml` | `kmvpy[mysql]` 运行依赖和 `test` extra |
+| `demo_project_py/app/run.py` | 开发环境启动入口 |
+| `demo_project_py/app/etc/{develop,release}/` | 配置和部署资源 |
+| `demo_project_py/demo_project/` | DTO、Router、Service、Hub、ORM 和调度注册入口 |
+| `demo_project_py/tests/` | Redis/鉴权/实时连接测试与本机验收服务 |
+| `demo_project_spa/` | Quasar/Vue 页面与实时连接行为测试 |
+| `biu` | 本地构建、上传与部署命令 |
 
 ## 更新已有工程
 
@@ -123,378 +101,91 @@ bun.lock
 它不会删除模板中已有但工程里不存在的文件；唯一例外是旧版 `gentpl` 生成的
 `py/__PY_PROJECT_NAME__/` 包装目录会被清理，避免同一 Python 子项目模板同时存在新旧两套路径。
 
-## 在 Cursor 中使用
+## 安装与启动
 
-### 1. 打开 workspace 根目录
-
-请直接在 Cursor 打开生成后的外层目录，例如：
-
-```text
-/tmp/demo_project
-```
-
-不要只打开 `demo_project_py/`，因为 generator 会同时生成：
-
-- 外层 `.vscode/` 配置
-- Python 子项目 `demo_project_py/`
-- 前端子项目 `demo_project_spa/`
-
-生成器已经为 Cursor / VS Code 准备好了：
-
-- `.vscode/settings.json`
-- `.vscode/launch.json`
-
-其中已经配置：
-
-- `PYTHONPATH` 指向 `PROJECT_NAME_py`
-- Python 调试工作目录为 `PROJECT_NAME_py`
-- CursorPyright 能正确识别包导入
-
-### 2. 选择 Python 解释器
-
-在 Cursor 中建议这样做：
-
-1. 打开终端
-2. 进入 Python 子项目目录
-3. 创建虚拟环境并安装依赖
-4. 在 Cursor 中将解释器切换到该虚拟环境
-
-推荐命令：
+在编辑器中打开外层 workspace 根目录，以保留生成的 `.vscode` 配置。激活项目 Python 环境，在后端目录安装：
 
 ```bash
 cd demo_project_py
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[test,sqlite]"
-```
-
-如果你要连接其他数据库，也可以按需安装：
-
-```bash
-pip install -e ".[test,mysql]"
-pip install -e ".[test,postgresql]"
-pip install -e ".[test,all]"
-```
-
-在 Cursor 中可通过以下方式切换解释器：
-
-- `Cmd/Ctrl + Shift + P`
-- 输入 `Python: Select Interpreter`
-- 选择 `demo_project_py/.venv` 对应的解释器
-
-### 3. 启动应用
-
-你可以直接用终端启动：
-
-```bash
-cd demo_project_py
-source .venv/bin/activate
+python -m pip install -e .
 python app/run.py
 ```
 
-也可以直接使用生成好的调试配置：
+生成工程通过 `kmvpy[mysql]` 默认包含 MySQL（aiomysql）、PostgreSQL（asyncpg）和 SQLite（aiosqlite）异步驱动。切换数据库只需修改配置中的数据库 URL。项目不再额外重复声明 SQLAlchemy、cryptography 或数据库驱动；旧项目级 `mysql`、`postgresql`、`sqlite`、`all` extras 已合并到默认安装。
 
-- 打开 Cursor 的 Run and Debug
-- 选择 `Python: Uvicorn demo_project`
-- 启动后会以 `demo_project_py` 为工作目录运行 `uvicorn`
+配置默认为 `app/etc/develop/config.yaml`，可通过 `DEMO_PROJECT_CONFIG_PATH` 指定。运行真实应用前，应配置 JWT 密钥文件和数据库/Redis；可用 `kmvpy rotate-jwt-keys app/etc/develop/config.yaml` 生成开发密钥。用编辑器的 `Python: Select Interpreter` 选择已安装依赖的解释器。
 
-如果你只是执行 `st_test` 冒烟测试，通常不需要额外手工启动服务，因为测试会直接通过 `TestClient` 调用应用对象。
+## 运行生成工程的测试
 
-## 这套冒烟测试框架怎么工作
+在后端目录安装测试依赖：
 
-它的本质是：
+```bash
+python -m pip install -e ".[test]"
+```
 
-- `pytest` 负责收集和执行测试
-- `StBasePyTest.data_driven` 把 YAML 用例转成参数化测试
-- 测试类调用 `self.run_case(...)` 按步骤执行 HTTP 请求
-- `fastapi.testclient.TestClient` 直接调用 ASGI 应用
-- `StExpect` 只校验必要条件，不要求完整响应完全一致
+`test` extra 提供 pytest 与 HTTP/Socket.IO 测试客户端。当前模板提供 `tests/test_realtime.py` 和 `tests/realtime_fixture.py`，不自动生成业务账号冒烟数据或 `app/st_test`。
 
-对应关系如下：
+实时验收使用独立 Redis（默认本机 16389 端口），不使用业务 Redis。按生成项目的 [Web 实时连接与恢复文档](template/docs/web-realtime.md.tpl) 准备环境后，在 Python 子项目运行：
 
-- 测试代码文件：`app/st_test/test_user_opt_router.py`
-- 测试数据文件：`app/st_test/test_user_opt_router.yaml`
+```bash
+PYTHONPATH=. python -m unittest discover -s tests -p test_realtime.py
+```
 
-这两个文件必须：
+浏览器验收还需要启动 `tests/realtime_fixture.py`，并准备 Bun、Playwright/Chromium。具体命令、Redis端口、合成身份边界和验收限制以生成的 `docs/web-realtime.md` 为准。前端独立行为测试从 SPA 目录执行 `bun run test`。
 
-- 文件名同名
-- 位于同一目录
-- YAML 顶层 key 对应测试方法名
+## 自行新增 YAML 接口冒烟测试
 
-例如 Python 测试里有：
+KMVPy 的公共 `kmvpy.common.st` 模块保留 `StBasePyTest`、`StTestCase` 和 `StExpect`。需要业务 API 冒烟测试时，可自行添加 Python/YAML 同名文件；应用配置、数据库隔离、鉴权数据及 `client` fixture 由项目提供。
+
+例如在 `tests/test_api.py` 中使用：
 
 ```python
-@StBasePyTest.data_driven
-def test_email_login(self, user_smoke_client, testdata: StTestCase):
-    self.run_case(user_smoke_client, testdata)
-```
+from kmvpy.common.st import StBasePyTest, StTestCase
 
-那么同目录 YAML 中就必须有：
 
-```yaml
-test_email_login:
-  comment: user login smoke
-  case_list:
-    - comment: login with registered account
-      steps:
-        - step_kid: STEP_EMAIL_LOGIN
-          action: POST /api/user/email/login
-          request:
-            email: smoke_login@example.com
-            password: "SmokePass123"
-      expected:
-        code: 0
-```
-
-## 框架核心约定
-
-### 1. 每个 step 都是一个 HTTP 动作
-
-`step.action` 必须写成：
-
-```text
-<METHOD> <URI>
-```
-
-例如：
-
-```text
-GET /api/ping
-POST /api/user/email/register
-```
-
-### 2. `request` 会自动映射到请求参数
-
-- `GET/DELETE/HEAD/OPTIONS` 会映射到 `params`
-- 其他请求方法会映射到 `json`
-
-所以 YAML 中写：
-
-```yaml
-request:
-  email: demo@example.com
-  password: "123456"
-```
-
-对 `POST` 请求来说就会变成 JSON body。
-
-### 3. 断言是“必要条件匹配”
-
-这套框架不是快照测试。
-
-如果你在 `expected.data` 中只写了：
-
-```yaml
-data:
-  user:
-    email: smoke@example.com
-```
-
-那么它只会检查这些关键字段，不会要求响应里的其他字段也完全一致。
-
-这很适合做接口冒烟测试，因为返回体新增无关字段时，不会轻易把测试打爆。
-
-### 4. 可以在步骤之间传递运行时状态
-
-框架给测试类预留了几个 hook：
-
-- `build_request_kwargs(...)`
-- `before_step(...)`
-- `after_step(...)`
-- `after_step_hook(...)`
-
-默认生成的 `test_user_opt_router.py` 就演示了两种典型用法：
-
-- 在登录或注册成功后，从响应里提取 token 存到 `runtime`
-- 在访问需要鉴权的接口时，自动把 `Authorization` 写入请求头
-
-## 直接运行冒烟测试
-
-### 运行全部 `st_test`
-
-```bash
-cd demo_project_py
-source .venv/bin/activate
-pytest app/st_test
-```
-
-### 仅运行健康检查
-
-```bash
-cd demo_project_py
-source .venv/bin/activate
-pytest app/st_test/test_health_router.py -q
-```
-
-### 仅运行用户模块测试
-
-```bash
-cd demo_project_py
-source .venv/bin/activate
-pytest app/st_test/test_user_opt_router.py -q
-```
-
-### 只运行某一个测试方法
-
-```bash
-cd demo_project_py
-source .venv/bin/activate
-pytest app/st_test/test_user_opt_router.py -k test_email_login -q
-```
-
-### 查看详细输出
-
-```bash
-cd demo_project_py
-source .venv/bin/activate
-pytest app/st_test -vv
-```
-
-## 在 Cursor 中直接运行测试
-
-推荐两种方式。
-
-### 方式一：内置终端
-
-最稳定、最直观，适合先跑通一遍。
-
-```bash
-cd demo_project_py
-source .venv/bin/activate
-pytest app/st_test -vv
-```
-
-### 方式二：Testing 面板
-
-如果你已经在 Cursor 中选好了虚拟环境解释器，一般可以直接：
-
-1. 打开 Testing 面板
-2. 等待 `pytest` 测试被发现
-3. 运行 `app/st_test` 下的测试
-
-如果发现失败或没有收集到测试，优先检查：
-
-- 当前解释器是否为 `demo_project_py/.venv`
-- 是否已安装 `pytest`
-- 是否已安装对应数据库驱动，如 `aiosqlite`
-- 当前打开的是不是外层 workspace 根目录
-
-## 默认示例测试说明
-
-### `test_health_router`
-
-这个测试：
-
-- 不依赖数据库
-- 使用 `health_smoke_client`
-- 验证 `GET /api/ping`
-
-适合作为最小连通性验证。
-
-### `test_user_opt_router`
-
-这个测试：
-
-- 依赖数据库
-- 使用 `user_smoke_client`
-- 默认会动态生成一个临时 SQLite 配置文件
-- 数据库 URL 会被改写成临时目录下的 `sqlite+aiosqlite:///.../smoke.db`
-
-这意味着：
-
-- 你无需准备 MySQL / PostgreSQL
-- 新生成项目在本地即可直接做自动化冒烟测试
-- 每次运行测试都会使用独立临时库，避免污染开发数据
-
-如果缺少 `aiosqlite`，测试会自动跳过，并提示安装：
-
-```bash
-pip install -e ".[sqlite,test]"
-```
-
-## 如何新增一个冒烟测试
-
-推荐按这个顺序做：
-
-1. 在 `app/st_test/` 下新增一个测试文件，例如 `test_order_router.py`
-2. 在同目录新增 `test_order_router.yaml`
-3. 让测试类继承 `StBasePyTest`
-4. 覆盖 `on_assert()`，把 HTTP 响应转成 `ApiResponse`
-5. 用 `@StBasePyTest.data_driven` + `self.run_case(...)` 执行 YAML 用例
-
-一个最小示例：
-
-```python
-from kmvpy.common.response import ApiResponse
-from kmvpy.common.st import StBasePyTest, StExpect, StTestCase
-
-
-class TestOrderRouter(StBasePyTest):
-    def on_assert(self, resp, expected: StExpect):
-        assert resp is not None, "No steps produced a response"
-        assert resp.status_code == 200, f"HTTP {resp.status_code}: {resp.text}"
-        expected.assert_on(ApiResponse(**resp.json()))
-
+class TestApi(StBasePyTest):
     @StBasePyTest.data_driven
-    def test_create_order(self, user_smoke_client, testdata: StTestCase):
-        self.run_case(user_smoke_client, testdata)
+    def test_example(self, client, testdata: StTestCase):
+        self.run_case(client, testdata)
 ```
 
-对应 YAML：
+同目录 `tests/test_api.yaml`：
 
 ```yaml
-test_create_order:
-  comment: create order smoke
+test_example:
   case_list:
-    - comment: create one order
+    - comment: endpoint returns success
       steps:
-        - step_kid: STEP_CREATE_ORDER
-          action: POST /api/order/create
-          request:
-            sku: demo-sku
-            quantity: 1
+        - step_kid: STEP_EXAMPLE
+          action: GET /api/example
       expected:
         code: 0
-        data:
-          sku: demo-sku
-          quantity: 1
 ```
 
-## 常见问题
+`/api/example` 代表项目自行实现的接口。`step.action` 使用 `METHOD /uri`；GET/DELETE 等请求的 `request` 映射为查询参数，其余方法映射为 JSON。`StExpect` 校验必要条件，不要求完整响应完全相等。动态参数和鉴权流程可通过 `build_request_kwargs`、`after_step_hook` 和 `NextStepRequest` 扩展。
 
-### 为什么我运行 `pytest app/st_test` 报导入错误？
+新增 fixture 后，使用 `python -m pytest tests/test_api.py -q` 执行。公共框架的完整行为以 `kmvpy/common/st/` 的源码与回归为准。
 
-优先检查：
+## 构建、部署与升级
 
-- 你是不是在 `PROJECT_NAME_py/` 目录下运行命令
-- 虚拟环境是否已经激活
-- 是否已执行 `pip install -e .` 或 `pip install -e ".[test,sqlite]"`
-- Cursor 当前解释器是否指向 `.venv`
-
-### 为什么用户相关冒烟测试被跳过？
-
-因为 `user_smoke_client` 会显式检查 `aiosqlite`。如果你没有安装 SQLite 测试依赖，测试会被跳过。
-
-安装命令：
+生成项目的 `biu` 本地构建使用 `build` 和 `setuptools>=77.0.3`，无需单独安装 wheel 包：
 
 ```bash
-pip install -e ".[test,sqlite]"
+python -m pip install build "setuptools>=77.0.3"
 ```
 
-### 为什么 YAML 改了但测试行为不对？
+远程 `deploy.sh` 先安装应用 wheel，再安装并校验 `KMVPY_VERSION` 指定的 `kmvpy[mysql]` 版本，然后执行可选密钥轮换并启动服务。完整流程见生成的 `docs/ops-biu-release-guide.md`。
 
-重点检查：
+`kmvpy update` 保留既有业务代码、配置和依赖声明，只补缺失文件，并针对受支持的旧发布脚本作升级。已有工程升级到本次依赖契约时，应人工同步 `pyproject.toml`、`deploy.sh` 和 `biu`：默认依赖使用 `kmvpy[mysql]>=0.2.3,<0.3`，测试依赖使用 `kmvpy[test]>=0.2.3,<0.3`，并同步部署脚本固定版本。不要预期 update 覆盖已存在的业务入口或依赖文件。
 
-- YAML 文件名是否和测试文件同名
-- YAML 顶层 key 是否和测试方法名一致
-- `step.action` 是否是 `METHOD /uri` 这种格式
-- `request` / `expected` 字段结构是否正确
+## 维护生成器
 
-## 给 generator 维护者
+修改 `kmvpy/generator/project_generator.py`、`template/` 及相邻回归。库源码环境安装 `pip install -e ".[test,dev,mysql]"` 后执行：
 
-如果你的目标不是“使用生成后的测试框架”，而是修改 generator 自身，请改读：
+```bash
+python -m pytest kmvpy/generator -q
+python -m build
+python -m twine check --strict dist/*
+```
 
-1. `kmvpy/generator/AGENTS.md`
-2. `kmvpy/generator/project_generator.py`
-3. `kmvpy/generator/test_project_generator.py`
-4. `kmvpy/generator/template/py/app/st_test/*.tpl`
+生成器回归会验证当前真实布局、Python 语法与包内导入、前端路由目标、依赖元数据、增量更新与模板回写，以及 SQLite 生命周期和 Redis ACL 兼容。

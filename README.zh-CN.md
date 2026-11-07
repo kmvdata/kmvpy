@@ -10,7 +10,7 @@
   <img src="https://raw.githubusercontent.com/kmvdata/kmvpy/main/assets/kmvpy-header.svg" alt="KMVPy header" width="640" />
 </p>
 
-基于 **FastAPI** 的服务端基础库：YAML 驱动配置、异步 SQLAlchemy 领域层、统一响应与异常、JWT、APScheduler 调度、Socket.IO，以及 **工程脚手架**（Python + 前端子项目、YAML 冒烟测试骨架）。默认依赖已包含 Web、异步 SQLite/PostgreSQL、Redis、Cassandra 驱动、PyJWT、OpenAI SDK 等；**MySQL** 需额外可选依赖。
+基于 **FastAPI** 的服务端基础库：YAML 驱动配置、异步 SQLAlchemy 领域层、统一响应与异常、JWT、APScheduler 调度、Socket.IO，以及 **工程脚手架**（Python + 前端子项目和实时连接测试骨架）。默认依赖已包含 Web、异步 SQLite/PostgreSQL、Redis、PyJWT 和 Socket.IO；**MySQL** 需额外可选依赖。
 
 ## 核心模块（框架能力）
 
@@ -23,7 +23,7 @@
 | **`kmvpy.common.exception`** | `KmvException`、`KmvError`：业务错误码与文案约定。 |
 | **`kmvpy.common.schedule`** | 基于 APScheduler 的异步调度：`ScheduleManager`、`schedule_task` 装饰器、全局调度器生命周期（与 ASGI 启动挂钩）。 |
 | **`kmvpy.common.kmv`** | `kosmos`：进程内配置、Socket.IO 等既有运行态挂载点；Storage 由应用显式持有并传给 `init_asgi_app`。 |
-| **`kmvpy.common.st`** | 冒烟测试骨架：`StBasePyTest`、`StTestCase`、YAML 步骤与期望（供生成工程中的 `st_test` 使用）。 |
+| **`kmvpy.common.st`** | 冒烟测试骨架：`StBasePyTest`、`StTestCase`、YAML 步骤与期望（供项目自行新增 YAML 接口测试；安装 `test` extra）。 |
 | **`kmvpy.core.main.service`** | JWT（多算法、用户信息载体等，详见模块）。 |
 | **`kmvpy.core.main.router`** | Socket.IO 与 FastAPI 应用绑定。 |
 | **`kmvpy.generator`** | CLI：`kmvpy create` / `kmvpy update` / `kmvpy rotate-jwt-keys`，生成工程并支持 JWT 密钥轮换；详见 `kmvpy/generator/README.md`。 |
@@ -31,11 +31,11 @@
 ## 默认依赖与可选
 
 - **声明位置：** `pyproject.toml`（PEP 517 / PEP 621，setuptools 构建后端）。
-- **可选：** `[project.optional-dependencies]` 中目前为 **`mysql`**（`mysqlclient`、`aiomysql` 等）；其余 Web/Redis/SocketIO 等在默认 `dependencies` 中。
+- **可选：** `mysql` 安装异步 MySQL 驱动 `aiomysql`；`multipart` 提供表单/文件解析；`test` 安装冒烟测试运行器和 HTTP/Socket.IO 测试客户端；`dev` 提供构建与打包校验工具。SQLite、PostgreSQL、Redis、Socket.IO 仍在默认依赖中。
 
 ## 技术栈（节选）
 
-FastAPI · Uvicorn · Pydantic v2 · SQLAlchemy 2（异步）· Redis · APScheduler · python-i18n · PyYAML · PyJWT · fastapi-socketio · asyncpg / aiosqlite · cassandra-driver · OpenAI SDK
+FastAPI · Uvicorn · Pydantic v2 · SQLAlchemy 2（异步）· Redis · APScheduler · python-i18n · PyYAML · PyJWT · python-socketio · asyncpg / aiosqlite
 
 ## 典型用途
 
@@ -47,11 +47,15 @@ REST/实时混合 API、统一配置与错误契约的微服务底座、需要�
 
 **环境：** Python ≥ 3.11
 
+**平台：** Windows 使用 64 位 Python。Intel macOS 暂保留 cryptography 48.x 兼容范围，但该版本线已不在上游安全维护范围内；其余受支持平台使用 50.x。详见[依赖策略与迁移说明](https://github.com/kmvdata/kmvpy/blob/main/docs/DEPENDENCIES.md)。
+
 > **发布状态（2026-09-08）：** PyPI 的项目接口当前没有找到 `kmvpy`，但本仓库尚未完成首发；在首个版本真正发布前，请使用下面的本地安装方式。维护者操作见 [PyPI 首次发布指南](https://github.com/kmvdata/kmvpy/blob/main/docs/PUBLISHING.md)。
 
 **本地安装：** `pip install .` · 开发：`pip install -e .` · 使用 MySQL：`pip install ".[mysql]"`
 
 **PyPI 安装（首发完成后）：** `pip install kmvpy` · 使用 MySQL：`pip install "kmvpy[mysql]"`
+
+冒烟测试需安装 `pip install -e ".[test]"`；开发与打包校验使用 `pip install -e ".[test,dev]"`。表单或上传接口另外安装 `pip install ".[multipart]"`。
 
 **构建：** `python -m pip install -U build twine && python -m build && python -m twine check --strict dist/*` → 产物在 `dist/`；分发/安装优先 **wheel**。仅从 `tar.gz` 离线安装且避免拉取构建依赖时：`pip install --no-build-isolation --no-deps dist/kmvpy-0.2.3.tar.gz`。
 
@@ -97,7 +101,7 @@ redis:
 
 ### 打包与本地安装（详细）
 
-以下命令默认在仓库根目录（含 `pyproject.toml`）执行；构建由 setuptools 以 PEP 517 方式驱动，产物统一输出到 `dist/`。首次构建需要联网获取构建工具依赖（`setuptools`、`wheel`），之后的重复构建会命中本地缓存。
+以下命令默认在仓库根目录（含 `pyproject.toml`）执行；构建由 setuptools 以 PEP 517 方式驱动，产物统一输出到 `dist/`。首次构建需要联网获取构建工具依赖（`setuptools>=77.0.3`），之后的重复构建会命中本地缓存。
 
 **① 准备构建与校验工具（一次性）**
 
@@ -117,7 +121,7 @@ python -m twine check --strict dist/*
 
 | 产物 | 说明 | 建议用途 |
 |------|------|----------|
-| `dist/kmvpy-0.2.3-py3-none-any.whl` | wheel，纯 Python、无平台限制 | **首选**：安装、交付、离线分发 |
+| `dist/kmvpy-0.2.3-py3-none-any.whl` | 纯 Python 库 wheel；运行平台受依赖支持范围约束 | **首选**：安装、交付、离线分发 |
 | `dist/kmvpy-0.2.3.tar.gz` | sdist 源码包 | 审计源码、二次打包 |
 
 wheel 已随包携带脚手架模板与 nginx 模板（由 `MANIFEST.in` + `include-package-data` 收集），因此安装后 `kmvpy create / update` 即可直接生成或更新工程，无需再从仓库手动拷贝模板。
@@ -128,7 +132,7 @@ wheel 已随包携带脚手架模板与 nginx 模板（由 `MANIFEST.in` + `incl
 
 ```bash
 pip install .
-# 需要 MySQL 驱动（mysqlclient / aiomysql）时：
+# 需要 异步 MySQL 驱动（aiomysql）时：
 pip install ".[mysql]"
 ```
 
