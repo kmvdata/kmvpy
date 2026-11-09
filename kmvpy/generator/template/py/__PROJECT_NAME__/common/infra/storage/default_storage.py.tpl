@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import threading
-from typing import Any
 
 from kmvpy.common.infra.korm_storage import KOrmStorage
 from kmvpy.common.kmv import kosmos
 
 
 class DefaultStorage(KOrmStorage):
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.init_db_session()
+        if self.redis_config is not None:
+            self.init_redis_client()
 
     def has_redis_client(self) -> bool:
         return super().has_redis_client()
@@ -29,16 +34,17 @@ class DefaultStorage(KOrmStorage):
     __lock = threading.Lock()
 
     @classmethod
-    def instance(cls, config: Any | None = None) -> DefaultStorage:
+    def instance(cls) -> DefaultStorage:
         if cls.__storage is None:
             with cls.__lock:
                 if cls.__storage is None:
-                    config = config if config is not None else kosmos.config
+                    config = kosmos.config
                     database_config = config.get_default_storage_database_config()
                     redis_config = config.get_default_storage_redis_config()
+                    if database_config is None:
+                        raise RuntimeError("数据库未配置")
                     cls.__storage = cls(
                         database_config=database_config,
                         redis_config=redis_config,
-                        timezone=config.timezone,
                     )
         return cls.__storage

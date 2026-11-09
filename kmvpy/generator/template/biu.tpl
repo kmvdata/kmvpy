@@ -363,9 +363,9 @@ run_py_build() {
   resolve_local_conda_python
   build_python="$LOCAL_CONDA_PYTHON"
   log "本地构建 Python: ${build_python}"
-  if ! "${build_python}" -c 'import build, setuptools; from packaging.version import Version; assert Version(setuptools.__version__) >= Version("77.0.3")' >/dev/null 2>&1; then
-    printf -v install_command '%q -m pip install --upgrade build "setuptools>=77.0.3"' "${build_python}"
-    die "当前 Conda 环境需要 build 和 setuptools>=77.0.3。请执行: ${install_command}"
+  if ! "${build_python}" -c "import setuptools, build, wheel" >/dev/null 2>&1; then
+    printf -v install_command '%q -m pip install build setuptools wheel' "${build_python}"
+    die "当前 Conda 环境缺少构建依赖。请执行: ${install_command}"
   fi
   log "在 ${py_dir} 执行 ${build_python} -m build --no-isolation"
   "${build_python}" -m build --no-isolation

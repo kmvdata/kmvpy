@@ -56,21 +56,3 @@ async def api_admin_database_table_drop(
     return ApiResponse.success_response(
         data=await AdminDatabaseTableService.drop_table(req)
     )
-
-
-@router.post(
-    path="/regenerate",
-    summary="重建数据库表",
-    description="按 common.infra.orm.__init__ 中注册的 ORM 模型同步指定表结构。",
-    tags=["admin_database_table"],
-)
-@api_log
-@admin_op_log
-async def api_admin_database_table_regenerate(
-    req: AdminDatabaseTableActionReq,
-    admin_user: JwtUserInfo = Depends(auth_admin),
-):
-    _ = admin_user
-    return ApiResponse.success_response(
-        data=await AdminDatabaseTableService.regenerate_table(req)
-    )

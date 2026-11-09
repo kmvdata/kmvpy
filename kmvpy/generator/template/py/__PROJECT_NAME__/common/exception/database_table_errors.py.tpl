@@ -21,7 +21,7 @@ DATABASE_TABLE_CONFIRM_MISMATCH_ERROR = [
 DATABASE_TABLE_REGENERATE_UNREGISTERED_ERROR = [
     46004,
     "数据表未注册",
-    "该数据表未在 ORM 初始化清单中注册，无法自动重建",
+    "该数据表未在 ORM 初始化清单中注册，无法按 ORM 建议",
 ]
 
 DATABASE_TABLE_OPERATION_FAILED_ERROR = [
@@ -34,4 +34,28 @@ DATABASE_SCOPE_FORBIDDEN_ERROR = [
     46007,
     "数据库不在允许清单",
     "当前只允许操作配置文件指定的数据库",
+]
+
+SCHEMA_SPEC_INVALID_ERROR = [
+    46008,
+    "结构定义不合法",
+    "表结构定义不合法，请检查类型、默认值或标识符",
+]
+
+SCHEMA_STALE_ERROR = [
+    46009,
+    "表结构已变化",
+    "表结构已发生变化，请重新加载后再试",
+]
+
+SCHEMA_MANUAL_REQUIRED_ERROR = [
+    46010,
+    "需要手动处理",
+    "该变更无法自动执行，请按生成的手动方案处理",
+]
+
+SCHEMA_APPLY_FAILED_ERROR = [
+    46011,
+    "结构变更执行失败",
+    "结构变更执行失败，已回滚到执行前状态",
 ]

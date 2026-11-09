@@ -80,6 +80,21 @@ export const useDatabaseCatalogStore = defineStore("databaseCatalog", () => {
     return request;
   }
 
+  /**
+   * 强制重新拉取某库的表名清单。
+   *
+   * 删除或新增表后必须走这里：``ensureTablesLoaded`` 在 ``ready`` 时直接返
+   * 回缓存，抽屉菜单会继续显示已不存在的表。
+   */
+  function refreshTables(database: string): Promise<void> {
+    const name = database.trim();
+    if (!name) {
+      return Promise.resolve();
+    }
+    setTableStatus(name, "idle");
+    return ensureTablesLoaded(name);
+  }
+
   async function refresh(): Promise<void> {
     if (inFlight) {
       return inFlight;
@@ -118,5 +133,6 @@ export const useDatabaseCatalogStore = defineStore("databaseCatalog", () => {
     tablesOf,
     tableStatusOf,
     ensureTablesLoaded,
+    refreshTables,
   };
 });

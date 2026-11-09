@@ -42,7 +42,7 @@ class AdminSocketService:
         socket_manager = AdminSocketService._socketio()
         if socket_manager is None:
             return None
-        return getattr(socket_manager, "server", socket_manager)
+        return getattr(socket_manager, "_sio", socket_manager)
 
     @staticmethod
     def _normalize_token(token_or_header: str | None) -> str | None:

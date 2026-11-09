@@ -95,7 +95,7 @@ The generated project includes a Python backend, SPA, editor config, and deploym
 The backend project lives in `__PY_PROJECT_NAME__/`. Its `pyproject.toml` depends on the KMVPy release published on PyPI:
 
 ```toml
-kmvpy[mysql]>=0.2.3,<0.3
+kmvpy>=0.2.1
 ```
 
 If your environment does not have this local path, install an available KMVPy package or adjust the dependency source first.
@@ -105,11 +105,9 @@ Run locally (this project uses Conda only, no venv):
 ```bash
 cd __PY_PROJECT_NAME__
 conda activate kmvpy   # or any Conda environment with the project dependencies installed
-python -m pip install -e "."
+python -m pip install -e ".[postgresql]"
 python app/run.py
 ```
-
-Runtime dependencies include async MySQL, PostgreSQL and SQLite drivers. For tests, run `python -m pip install -e ".[test]"` to install pytest and HTTP/Socket.IO test clients. The former project-level database extras are covered by the default installation; switch databases through the database URL.
 
 The default config is `__PY_PROJECT_NAME__/app/etc/develop/config.yaml`. You can also choose a config through an environment variable:
 
@@ -259,8 +257,10 @@ No scheduled job is registered by default for the current business scope. To add
 - PyJWT
 - Socket.IO
 - PyYAML
+- OpenAI SDK
 - asyncpg
 - aiosqlite
+- Cassandra driver
 - Quasar / Vue 3 / TypeScript / Vite
 
 ## Development Flow

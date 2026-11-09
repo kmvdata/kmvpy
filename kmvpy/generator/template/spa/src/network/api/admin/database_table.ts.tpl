@@ -5,6 +5,14 @@ import type {
   AdminDatabaseTablesListReq,
   AdminDatabaseTablesListRes,
 } from "src/network/dto/admin/database_table";
+import type {
+  AdminDatabaseTableSchemaApplyReq,
+  AdminDatabaseTableSchemaApplyRes,
+  AdminDatabaseTableSchemaPreviewReq,
+  AdminDatabaseTableSchemaPreviewRes,
+  AdminDatabaseTableSchemaReq,
+  AdminDatabaseTableSchemaRes,
+} from "src/network/dto/admin/database_table_schema";
 
 export class ApiAdminDatabaseTable {
   static listTables(
@@ -27,13 +35,42 @@ export class ApiAdminDatabaseTable {
     );
   }
 
-  static regenerateTable(
-    requestData: AdminDatabaseTableActionReq,
-  ): Promise<AdminDatabaseTableActionRes> {
-    return postAdminApi<AdminDatabaseTableActionReq, AdminDatabaseTableActionRes>(
-      "/api/admin/database_table/regenerate",
+  /** 读当前结构、方言能力与 ORM 建议初值；只读，不改结构。 */
+  static describeSchema(
+    requestData: AdminDatabaseTableSchemaReq,
+  ): Promise<AdminDatabaseTableSchemaRes> {
+    return postAdminApi<AdminDatabaseTableSchemaReq, AdminDatabaseTableSchemaRes>(
+      "/api/admin/database_table/schema/describe",
       requestData,
-      "重建数据库表失败",
+      "读取数据表结构失败",
+    );
+  }
+
+  /** 权威复核目标结构；只读，不执行任何 DDL。 */
+  static previewSchema(
+    requestData: AdminDatabaseTableSchemaPreviewReq,
+  ): Promise<AdminDatabaseTableSchemaPreviewRes> {
+    return postAdminApi<
+      AdminDatabaseTableSchemaPreviewReq,
+      AdminDatabaseTableSchemaPreviewRes
+    >(
+      "/api/admin/database_table/schema/preview",
+      requestData,
+      "预览数据表结构变更失败",
+    );
+  }
+
+  /** 执行结构变更；需先通过 preview 并由用户逐项确认风险。 */
+  static applySchema(
+    requestData: AdminDatabaseTableSchemaApplyReq,
+  ): Promise<AdminDatabaseTableSchemaApplyRes> {
+    return postAdminApi<
+      AdminDatabaseTableSchemaApplyReq,
+      AdminDatabaseTableSchemaApplyRes
+    >(
+      "/api/admin/database_table/schema/apply",
+      requestData,
+      "执行数据表结构变更失败",
     );
   }
 }

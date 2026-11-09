@@ -26,8 +26,6 @@ from __PROJECT_NAME__.common.infra.database_connection import database_name_of
 from __PROJECT_NAME__.common.infra.orm import (
     drop_database_table,
     inspect_database_tables,
-    regenerate_database_table,
-    registered_orm_model_by_table_name,
     registered_orm_models,
 )
 from __PROJECT_NAME__.common.infra.storage.default_storage import DefaultStorage
@@ -157,37 +155,5 @@ class AdminDatabaseTableService:
         if not dropped:
             raise KmvException(
                 error=database_table_exc.DATABASE_TABLE_NOT_FOUND_ERROR
-            )
-        return AdminDatabaseTableActionRes(table_name=table_name, success=True)
-
-    @staticmethod
-    async def regenerate_table(
-        req: AdminDatabaseTableActionReq,
-    ) -> AdminDatabaseTableActionRes:
-        AdminDatabaseTableService._ensure_confirmed(req)
-        table_name = req.table_name.strip()
-        if registered_orm_model_by_table_name(table_name) is None:
-            raise KmvException(
-                error=database_table_exc.DATABASE_TABLE_REGENERATE_UNREGISTERED_ERROR
-            )
-
-        async with AdminDatabaseTableService._default_storage() as storage:
-            try:
-                regenerated = await regenerate_database_table(table_name, storage)
-            except KmvException:
-                raise
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "重建数据库表失败 table=%s: %s",
-                    table_name,
-                    exc,
-                    exc_info=exc,
-                )
-                raise KmvException(
-                    error=database_table_exc.DATABASE_TABLE_OPERATION_FAILED_ERROR
-                ) from exc
-        if not regenerated:
-            raise KmvException(
-                error=database_table_exc.DATABASE_TABLE_REGENERATE_UNREGISTERED_ERROR
             )
         return AdminDatabaseTableActionRes(table_name=table_name, success=True)

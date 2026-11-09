@@ -40,7 +40,7 @@ BIU_DEPLOY=deploy@example.com:/home/__PROJECT_NAME__/__PROJECT_NAME___dist ./biu
 本地需要：bash、ssh/scp、tar、Python（含 `build` 模块）、bun（无 bun.lock 时才用 pnpm/npm）。
 
 ```bash
-cd __PY_PROJECT_NAME__ && python -m pip install build "setuptools>=77.0.3"
+cd __PY_PROJECT_NAME__ && python -m pip install build
 cd ../__SPA_PROJECT_NAME__ && bun install
 ```
 
@@ -76,9 +76,9 @@ sed -n '1,140p' __PY_PROJECT_NAME__/app/etc/release/config.yaml
 | --- | --- |
 | `--update-config` | 用本地 release/config.yaml 覆盖远程 `py/config.yaml` |
 | `--rotate-jwt-keys` | 安装 wheel 后、启动前轮换 JWT 密钥（已登录用户会掉线） |
-| `--no-deps` | 不随 wheel 装依赖（当前 deploy.sh 本就固定 `--no-deps`，此参数主要为表达意图）；deploy.sh 仍会安装并校验模板中固定的 `kmvpy[mysql]` 版本 |
+| `--no-deps` | 不随 wheel 装依赖（当前 deploy.sh 本就固定 `--no-deps`，此参数主要为表达意图）；kmvpy 默认仍会强制升级到最新版，除非远程设 `KMVPY_SKIP_UPGRADE=1` |
 
-远程 `py/deploy.sh` 会自动：选最新 wheel → 安装 → **安装并校验固定 kmvpy[mysql] 版本**（`pip install --force-reinstall "kmvpy[mysql]==${KMVPY_VERSION}"`，版本由 deploy.sh 的 `KMVPY_VERSION` 指定）→ 停旧进程 → nohup 启动（pid 写入 `py/__PROJECT_NAME__.pid`，日志追加 `py/nohup.out`）。
+远程 `py/deploy.sh` 会自动：选最新 wheel → 安装 → **默认强制安装最新 kmvpy**（`pip install -U --force-reinstall kmvpy`，`KMVPY_SKIP_UPGRADE=1` 可跳过）→ 停旧进程 → nohup 启动（pid 写入 `py/__PROJECT_NAME__.pid`，日志追加 `py/nohup.out`）。
 
 ## 5. 回滚
 
@@ -112,7 +112,7 @@ CONDA_ENV=kmvpy WHEEL=./__PROJECT_NAME__-rollback.whl ./deploy.sh
 
 | 现象 | 处理 |
 | --- | --- |
-| 报缺少 build 模块 | `python -m pip install build "setuptools>=77.0.3"` |
+| 报缺少 build 模块 | `python -m pip install build` |
 | SSH/SCP 失败 | 检查 `BIU_DEPLOY`、SSH key、`~/.ssh/config`、远程目录权限 |
 | conda 激活失败 | 检查 `BIU_DEPLOY_CONDA_ENV` 与远程环境名一致；可重跑 `./biu conda create 3.11` |
 | 后端启动后 API 不通 | 看 `py/nohup.out`；确认 PG/Redis 已启动、Nginx upstream 指向 `127.0.0.1:15000` |

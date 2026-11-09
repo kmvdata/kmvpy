@@ -177,20 +177,16 @@
                   </q-chip>
                 </td>
                 <td class="admin-table-td--actions">
+                  <!-- 打开可视化结构编辑器；不再有「重建表」黑盒流程。 -->
                   <q-btn
                     dense
                     flat
                     no-caps
-                    icon="auto_fix_high"
+                    icon="edit_note"
                     color="primary"
-                    :label="
-                      isRowAction(row, 'regenerate')
-                        ? t('adminDatabaseTables.actions.regenerating')
-                        : t('adminDatabaseTables.actions.regenerate')
-                    "
-                    :loading="isRowAction(row, 'regenerate')"
-                    :disable="!row.registered || hasBlockingAction"
-                    @click="openRegenerateDialog(row)"
+                    :label="t('adminDatabaseTables.actions.editSchema')"
+                    :disable="hasBlockingAction"
+                    @click="openSchemaEditor(row)"
                   />
                   <q-btn
                     dense
@@ -232,20 +228,16 @@
             @click="backToList"
           />
           <div v-if="detailTable" class="admin-database-tables__detail-actions">
+            <!-- 详情页入口：与列表行操作共用同一个编辑器组件。 -->
             <q-btn
               dense
               flat
               no-caps
-              icon="auto_fix_high"
+              icon="edit_note"
               color="primary"
-              :label="
-                isRowAction(detailTable, 'regenerate')
-                  ? t('adminDatabaseTables.actions.regenerating')
-                  : t('adminDatabaseTables.actions.regenerate')
-              "
-              :loading="isRowAction(detailTable, 'regenerate')"
-              :disable="!detailTable.registered || hasBlockingAction"
-              @click="openRegenerateDialog(detailTable)"
+              :label="t('adminDatabaseTables.actions.editSchema')"
+              :disable="hasBlockingAction"
+              @click="openSchemaEditor(detailTable)"
             />
             <q-btn
               dense
@@ -274,6 +266,14 @@
         </div>
       </div>
     </div>
+
+    <!-- 可视化结构编辑器：不新增路由，桌面大弹层 / 窄屏全屏。 -->
+    <AdminDatabaseTableSchemaEditor
+      v-model="schemaEditorOpen"
+      :table-name="schemaEditorTable"
+      :registered="schemaEditorRegistered"
+      @applied="onSchemaApplied"
+    />
   </q-page>
 </template>
 
@@ -288,9 +288,11 @@ import { ApiAdminDatabaseTable } from "src/network/api/admin/database_table";
 import type { AdminDatabaseTableRes } from "src/network/dto/admin/database_table";
 import { useKmvApiErrorMessage } from "src/i18n/kmv/useKmvApiErrorMessage";
 import { useDatabaseCatalogStore } from "src/stores/databaseCatalog";
+import AdminDatabaseTableSchemaEditor from "src/pages/admin/database/AdminDatabaseTableSchemaEditor.vue";
 import AdminDatabaseTableStructure from "src/pages/admin/database/AdminDatabaseTableStructure.vue";
 
-type TableAction = "drop" | "regenerate";
+/** 同一时刻只允许一个行操作在跑；结构编辑走独立弹层，不占用此状态。 */
+type TableAction = "drop";
 
 const { t } = useI18n();
 const $q = useQuasar();
@@ -334,6 +336,9 @@ const loading = ref(false);
 const errorText = ref("");
 const searchText = ref("");
 const actionState = ref<{ tableName: string; action: TableAction } | null>(null);
+const schemaEditorOpen = ref(false);
+const schemaEditorTable = ref("");
+const schemaEditorRegistered = ref(false);
 const metadata = reactive({
   dialect: "",
   database_name: "",
@@ -496,31 +501,27 @@ function openDropDialog(row: AdminDatabaseTableRes) {
   });
 }
 
-function openRegenerateDialog(row: AdminDatabaseTableRes) {
-  Dialog.create({
-    title: t("adminDatabaseTables.dialog.regenerateTitle"),
-    message: t("adminDatabaseTables.dialog.regenerateMessage", {
-      tableName: row.table_name,
-    }),
-    prompt: {
-      model: "",
-      type: "text",
-      label: t("adminDatabaseTables.dialog.confirmLabel"),
-    },
-    cancel: {
-      label: t("common.cancel"),
-      flat: true,
-      noCaps: true,
-    },
-    ok: {
-      label: t("adminDatabaseTables.actions.regenerate"),
-      color: "primary",
-      unelevated: true,
-      noCaps: true,
-    },
-  }).onOk((confirmTableName: string) => {
-    void runTableAction("regenerate", row, confirmTableName);
-  });
+function openSchemaEditor(row: AdminDatabaseTableRes) {
+  // 不占用 actionState：编辑器自己管理请求状态与迟到结果隔离。
+  schemaEditorTable.value = row.table_name;
+  schemaEditorRegistered.value = row.registered;
+  schemaEditorOpen.value = true;
+}
+
+async function onSchemaApplied() {
+  // 结构已变化：重新拉列表刷新只读展示。
+  await loadTables();
+  // 结构变更可能新建表，抽屉菜单同样需要重新对齐。
+  syncDrawerTables();
+}
+
+/** 让抽屉菜单重新拉当前库的表名清单；失败不打断页面主流程。 */
+function syncDrawerTables(): void {
+  const database = scopedDatabaseName.value || configuredDatabaseName.value;
+  if (!database) {
+    return;
+  }
+  void databaseCatalog.refreshTables(database).catch(() => undefined);
 }
 
 async function runTableAction(
@@ -541,31 +542,24 @@ async function runTableAction(
 
   actionState.value = { tableName: row.table_name, action };
   try {
-    if (action === "drop") {
-      await ApiAdminDatabaseTable.dropTable(buildActionReq(row, confirmTableName));
-      $q.notify({
-        type: "positive",
-        message: t("adminDatabaseTables.messages.dropped"),
-      });
-    } else {
-      await ApiAdminDatabaseTable.regenerateTable(
-        buildActionReq(row, confirmTableName),
-      );
-      $q.notify({
-        type: "positive",
-        message: t("adminDatabaseTables.messages.regenerated"),
-      });
+    await ApiAdminDatabaseTable.dropTable(buildActionReq(row, confirmTableName));
+    $q.notify({
+      type: "positive",
+      message: t("adminDatabaseTables.messages.dropped"),
+    });
+    // 明细页删除后该表已不存在：先退回表列表，再刷新权威数据，
+    // 避免停留在「未找到该表」的空详情页。
+    if (isTableDetailMode.value) {
+      backToList();
     }
     await loadTables();
+    // 抽屉菜单的表名来自 catalog store 缓存，必须强制重取，
+    // 否则已删除的表还会留在菜单里。
+    syncDrawerTables();
   } catch (error) {
     $q.notify({
       type: "negative",
-      message: resolveErrorMessage(
-        error,
-        action === "drop"
-          ? "adminDatabaseTables.errors.dropFailed"
-          : "adminDatabaseTables.errors.regenerateFailed",
-      ),
+      message: resolveErrorMessage(error, "adminDatabaseTables.errors.dropFailed"),
     });
   } finally {
     actionState.value = null;

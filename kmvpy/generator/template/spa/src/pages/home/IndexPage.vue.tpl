@@ -655,8 +655,10 @@ const stackItems = computed(() => [
   t("landing.stack.pyjwt"),
   t("landing.stack.socketio"),
   t("landing.stack.pyyaml"),
+  t("landing.stack.openai"),
   t("landing.stack.asyncpg"),
   t("landing.stack.aiosqlite"),
+  t("landing.stack.cassandra"),
 ]);
 
 const statusItems = computed<LabelValueItem[]>(() => [
