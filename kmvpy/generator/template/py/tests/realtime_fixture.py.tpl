@@ -17,7 +17,7 @@ import uvicorn
 from fixture_config import install_fixture_config
 from __PROJECT_NAME__.common.auth_session import AuthSessionService
 from __PROJECT_NAME__.common.dependencies.auth import auth_user, auth_admin
-from __PROJECT_NAME__.common.infra.realtime_http import RealtimeHttpMetrics
+from __PROJECT_NAME__.common.infra.realtime.http_metrics import RealtimeHttpMetrics
 from __PROJECT_NAME__.core.main.router.user.socket import router as user_router, register_user_socket_handlers
 from __PROJECT_NAME__.core.main.router.admin.socket import router as admin_router, register_admin_socket_handlers
 from __PROJECT_NAME__.core.main.service.user.socket import UserSocketService

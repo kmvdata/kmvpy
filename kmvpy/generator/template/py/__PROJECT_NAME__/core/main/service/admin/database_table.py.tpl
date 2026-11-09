@@ -22,7 +22,7 @@ from __PROJECT_NAME__.common.dto.admin.database_table import (
     AdminDatabaseTablesListRes,
 )
 from __PROJECT_NAME__.common.exception import database_table_errors as database_table_exc
-from __PROJECT_NAME__.common.infra.database_connection import database_name_of
+from __PROJECT_NAME__.common.infra.database.connection import database_name_of
 from __PROJECT_NAME__.common.infra.orm import (
     drop_database_table,
     inspect_database_tables,

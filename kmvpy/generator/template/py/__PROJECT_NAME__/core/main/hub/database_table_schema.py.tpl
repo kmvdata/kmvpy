@@ -3,7 +3,7 @@
 
 本 Hub 只做纯规则计算，全部 ``@staticmethod``，不 import FastAPI / DTO /
 Router / Service，也不自行开启事务。SQL 文本渲染与串行执行属于 Infra
-（``common/infra/database_ddl.py``），因为那是技术资源生命周期。
+（``common/infra/database/ddl.py``），因为那是技术资源生命周期。
 
 规划模型是结构化 dict，不是 SQL：
 
@@ -23,7 +23,7 @@ from kmvpy.common.exception.kmv_exception import KmvException
 from kmvpy.common.tool.logger import logger
 
 from __PROJECT_NAME__.common.exception import database_table_errors as database_table_exc
-from __PROJECT_NAME__.common.infra import database_ddl
+from __PROJECT_NAME__.common.infra.database import ddl as database_ddl
 from __PROJECT_NAME__.common.infra.orm import registered_orm_model_by_table_name, schema_spec
 
 # 执行计划路径

@@ -36,7 +36,7 @@
             dense
             round
             icon="close"
-            :aria-label="t('adminDatabaseTables.schemaEditor.actions.cancel')"
+            :aria-label="t('adminDatabaseTables.schemaEditor.actions.close')"
             @click="close"
           />
         </div>
@@ -250,7 +250,7 @@
           dense
           round
           icon="close"
-          :aria-label="t('adminDatabaseTables.schemaEditor.actions.cancel')"
+          :aria-label="t('adminDatabaseTables.schemaEditor.actions.close')"
           @click="manualOpen = false"
         />
       </q-card-section>
@@ -300,7 +300,7 @@
           unelevated
           no-caps
           color="primary"
-          :label="t('adminDatabaseTables.schemaEditor.actions.cancel')"
+          :label="t('adminDatabaseTables.schemaEditor.actions.close')"
           @click="resultOpen = false"
         />
       </q-card-actions>

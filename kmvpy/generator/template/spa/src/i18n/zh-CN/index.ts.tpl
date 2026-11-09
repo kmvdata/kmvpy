@@ -512,6 +512,7 @@ export default {
         execute: "执行变更",
         generateSql: "仅生成 SQL",
         cancel: "取消",
+        close: "关闭",
         reload: "重新加载",
       },
       result: {

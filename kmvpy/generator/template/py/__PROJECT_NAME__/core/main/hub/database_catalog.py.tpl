@@ -12,11 +12,11 @@ from kmvpy.common.tool.logger import logger
 
 from __PROJECT_NAME__.common.conf import get_app_config
 from __PROJECT_NAME__.common.exception import database_table_errors as database_table_exc
-from __PROJECT_NAME__.common.infra.database_connection import (
+from __PROJECT_NAME__.common.infra.database.connection import (
     database_name_of,
     describe_database_url,
 )
-from __PROJECT_NAME__.common.infra.database_inspect import read_database_table_names
+from __PROJECT_NAME__.common.infra.database.inspection import read_database_table_names
 from __PROJECT_NAME__.common.infra.orm import registered_orm_models
 from __PROJECT_NAME__.common.infra.storage.default_storage import DefaultStorage
 

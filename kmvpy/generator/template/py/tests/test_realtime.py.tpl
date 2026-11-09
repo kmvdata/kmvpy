@@ -12,8 +12,8 @@ from redis.asyncio import Redis
 from redis.exceptions import ConnectionError
 from __PROJECT_NAME__.common.auth_session import AuthSessionService
 from __PROJECT_NAME__.common.dependencies.auth import auth_user
-from __PROJECT_NAME__.common.infra.realtime_guard import RealtimeGuard, GuardPolicy
-from __PROJECT_NAME__.common.infra.realtime_auth import authenticate_transport
+from __PROJECT_NAME__.common.infra.realtime.auth import authenticate_transport
+from __PROJECT_NAME__.common.infra.realtime.guard import RealtimeGuard, GuardPolicy
 from __PROJECT_NAME__.core.main.hub.realtime import RealtimeHub
 from fixture_config import install_fixture_config
 

@@ -45,7 +45,7 @@ def gen_asgi_app(config_path: Annotated[Optional[str], "工程配置对象或配
     UserSocketService.require_redis_for_production(config)
     install_kmvpy_auth_session_service()
     app = init_asgi_app(config, routers)
-    from __PROJECT_NAME__.common.infra.realtime_http import RealtimeHttpMetrics
+    from __PROJECT_NAME__.common.infra.realtime.http_metrics import RealtimeHttpMetrics
     from starlette.middleware.cors import CORSMiddleware
     app.add_middleware(RealtimeHttpMetrics)
     # Extend the existing CORS contract, including the development regex variant.

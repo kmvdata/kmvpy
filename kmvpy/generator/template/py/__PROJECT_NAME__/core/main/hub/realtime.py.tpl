@@ -11,9 +11,9 @@ from redis.exceptions import RedisError
 import socketio
 
 from __PROJECT_NAME__.common.auth_session import AuthSessionService
-from __PROJECT_NAME__.common.infra.realtime_auth import authenticate_transport
+from __PROJECT_NAME__.common.infra.realtime.auth import authenticate_transport
 from __PROJECT_NAME__.common.conf import get_app_config
-from __PROJECT_NAME__.common.infra.realtime_guard import GuardPolicy, RealtimeGuard
+from __PROJECT_NAME__.common.infra.realtime.guard import GuardPolicy, RealtimeGuard
 
 
 @dataclass

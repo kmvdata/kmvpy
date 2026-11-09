@@ -529,6 +529,7 @@ export default {
         execute: "Run changes",
         generateSql: "SQL only",
         cancel: "Cancel",
+        close: "Close",
         reload: "Reload",
       },
       result: {
