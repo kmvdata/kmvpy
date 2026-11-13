@@ -21,4 +21,8 @@ export default {
   collapseChildren: "收起「{label}」的子菜单",
   tablesLoading: "正在读取数据表…",
   tablesEmpty: "该库暂无数据表",
+  tableStructure: "结构",
+  tableData: "数据",
+  expandTable: "展开「{label}」的视图菜单",
+  collapseTable: "收起「{label}」的视图菜单",
 };

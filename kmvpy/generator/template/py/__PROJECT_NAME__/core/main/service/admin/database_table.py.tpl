@@ -2,11 +2,11 @@
 """管理端数据库表维护服务。
 
 只使用配置声明的默认连接：不再接受自定义连接配置，也不提供跨库切换。
-库名合法性判断统一由 DatabaseCatalogHub 承担。
+库名合法性判断与默认连接的取用统一由 DatabaseCatalogHub 承担，本层不再持有
+取单例的副本，也不让 Service 之间互相引用。
 """
 
-from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any
 
 from kmvpy.common.exception.kmv_exception import KmvException
 from kmvpy.common.infra.korm_storage import KOrmStorage
@@ -28,28 +28,11 @@ from __PROJECT_NAME__.common.infra.orm import (
     inspect_database_tables,
     registered_orm_models,
 )
-from __PROJECT_NAME__.common.infra.storage.default_storage import DefaultStorage
 from __PROJECT_NAME__.core.main.hub.database_catalog import DatabaseCatalogHub
 
 
 class AdminDatabaseTableService:
     """在配置声明的数据库上查看与维护 ORM 注册表。"""
-
-    @staticmethod
-    @asynccontextmanager
-    async def _default_storage() -> AsyncIterator[KOrmStorage]:
-        """只暴露默认连接，不接受任何自定义连接或跨库切换。"""
-        DatabaseCatalogHub.ensure_allowed_database(None)
-        try:
-            storage = DefaultStorage.instance()
-        except KmvException:
-            raise
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("默认数据库连接不可用: %s", exc, exc_info=exc)
-            raise KmvException(
-                error=database_table_exc.DATABASE_CONNECTION_INVALID_ERROR
-            ) from exc
-        yield storage
 
     @staticmethod
     def _connection_summary(storage: KOrmStorage) -> str:
@@ -106,30 +89,28 @@ class AdminDatabaseTableService:
 
     @staticmethod
     async def list_tables() -> AdminDatabaseTablesListRes:
-        async with AdminDatabaseTableService._default_storage() as storage:
-            try:
-                raw_tables = await inspect_database_tables(storage)
-            except KmvException:
-                raise
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("读取数据库表失败: %s", exc, exc_info=exc)
-                raise KmvException(
-                    error=database_table_exc.DATABASE_CONNECTION_INVALID_ERROR
-                ) from exc
+        storage = DatabaseCatalogHub.default_storage()
+        try:
+            raw_tables = await inspect_database_tables(storage)
+        except KmvException:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("读取数据库表失败: %s", exc, exc_info=exc)
+            raise KmvException(
+                error=database_table_exc.DATABASE_CONNECTION_INVALID_ERROR
+            ) from exc
 
-            items = [
-                AdminDatabaseTableService._table_from_raw(raw) for raw in raw_tables
-            ]
-            return AdminDatabaseTablesListRes(
-                items=items,
-                total=len(items),
-                dialect=storage.engine.dialect.name,
-                connection_summary=AdminDatabaseTableService._connection_summary(
-                    storage
-                ),
-                database_name=database_name_of(storage.database_config),
-                registered_table_count=len(registered_orm_models()),
-            )
+        items = [
+            AdminDatabaseTableService._table_from_raw(raw) for raw in raw_tables
+        ]
+        return AdminDatabaseTablesListRes(
+            items=items,
+            total=len(items),
+            dialect=storage.engine.dialect.name,
+            connection_summary=AdminDatabaseTableService._connection_summary(storage),
+            database_name=database_name_of(storage.database_config),
+            registered_table_count=len(registered_orm_models()),
+        )
 
     @staticmethod
     async def drop_table(
@@ -137,21 +118,21 @@ class AdminDatabaseTableService:
     ) -> AdminDatabaseTableActionRes:
         AdminDatabaseTableService._ensure_confirmed(req)
         table_name = req.table_name.strip()
-        async with AdminDatabaseTableService._default_storage() as storage:
-            try:
-                dropped = await drop_database_table(table_name, storage)
-            except KmvException:
-                raise
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "删除数据库表失败 table=%s: %s",
-                    table_name,
-                    exc,
-                    exc_info=exc,
-                )
-                raise KmvException(
-                    error=database_table_exc.DATABASE_TABLE_OPERATION_FAILED_ERROR
-                ) from exc
+        storage = DatabaseCatalogHub.default_storage()
+        try:
+            dropped = await drop_database_table(table_name, storage)
+        except KmvException:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "删除数据库表失败 table=%s: %s",
+                table_name,
+                exc,
+                exc_info=exc,
+            )
+            raise KmvException(
+                error=database_table_exc.DATABASE_TABLE_OPERATION_FAILED_ERROR
+            ) from exc
         if not dropped:
             raise KmvException(
                 error=database_table_exc.DATABASE_TABLE_NOT_FOUND_ERROR

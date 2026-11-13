@@ -1,17 +1,16 @@
 # coding: utf-8
 """管理端表结构编辑服务。
 
-只做三件事：注入默认存储、按固定顺序调用 Hub、把结果映射成 DTO。
+只做三件事：取得配置声明的默认连接、按固定顺序调用 Hub、把结果映射成 DTO。
 指纹比对、风险确认、方言能力判断等业务规则全部在
 ``DatabaseTableSchemaHub`` 内，本层不做任何业务分支。
 
-``_default_storage()`` 沿用同目录既有服务的 ``@asynccontextmanager`` 模式：
-它是本仓库管理端数据库维护的技术入口，不接受任何连接参数，因此无法借此
-切换到配置文件之外的数据库。
+默认连接由 ``DatabaseCatalogHub.default_storage()`` 统一提供：它只取应用已
+初始化的单例并归一错误语义，不创建也不关闭资源，因此不接受任何连接参数，
+也无法借此切换到配置文件之外的数据库。存储生命周期仍由应用启动与关闭管理。
 """
 
-from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any
 
 from kmvpy.common.exception.kmv_exception import KmvException
 from kmvpy.common.infra.korm_storage import KOrmStorage
@@ -33,29 +32,12 @@ from __PROJECT_NAME__.common.dto.admin.database_table_schema import (
     AdminDatabaseTableSchemaStatementRes,
 )
 from __PROJECT_NAME__.common.exception import database_table_errors as database_table_exc
-from __PROJECT_NAME__.common.infra.storage.default_storage import DefaultStorage
 from __PROJECT_NAME__.core.main.hub.database_table_schema import DatabaseTableSchemaHub
 from __PROJECT_NAME__.core.main.hub.database_catalog import DatabaseCatalogHub
 
 
 class AdminDatabaseTableSchemaService:
     """表结构编辑的事务入口与 DTO 组装。"""
-
-    @staticmethod
-    @asynccontextmanager
-    async def _default_storage() -> AsyncIterator[KOrmStorage]:
-        """只暴露配置声明的默认连接。"""
-        DatabaseCatalogHub.ensure_allowed_database(None)
-        try:
-            storage = DefaultStorage.instance()
-        except KmvException:
-            raise
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("默认数据库连接不可用: %s", exc, exc_info=exc)
-            raise KmvException(
-                error=database_table_exc.DATABASE_CONNECTION_INVALID_ERROR
-            ) from exc
-        yield storage
 
     @staticmethod
     def _column(raw: dict[str, Any]) -> AdminDatabaseTableSchemaColumnRes:
@@ -128,20 +110,18 @@ class AdminDatabaseTableSchemaService:
         req: AdminDatabaseTableSchemaReq,
     ) -> AdminDatabaseTableSchemaRes:
         """读取当前结构、方言能力与 ORM 建议初值。"""
-        async with AdminDatabaseTableSchemaService._default_storage() as storage:
-            try:
-                data = await DatabaseTableSchemaHub.describe(
-                    storage, req.table_name
-                )
-            except KmvException:
-                raise
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "读取表结构失败 table=%s: %s", req.table_name, exc, exc_info=exc
-                )
-                raise KmvException(
-                    error=database_table_exc.DATABASE_CONNECTION_INVALID_ERROR
-                ) from exc
+        storage = DatabaseCatalogHub.default_storage()
+        try:
+            data = await DatabaseTableSchemaHub.describe(storage, req.table_name)
+        except KmvException:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "读取表结构失败 table=%s: %s", req.table_name, exc, exc_info=exc
+            )
+            raise KmvException(
+                error=database_table_exc.DATABASE_CONNECTION_INVALID_ERROR
+            ) from exc
 
         capabilities = data.get("capabilities") or {}
         return AdminDatabaseTableSchemaRes(
@@ -175,27 +155,27 @@ class AdminDatabaseTableSchemaService:
         req: AdminDatabaseTableSchemaPreviewReq,
     ) -> AdminDatabaseTableSchemaPreviewRes:
         """权威复核目标结构，返回可自动执行或需手动处理的方案。"""
-        async with AdminDatabaseTableSchemaService._default_storage() as storage:
-            try:
-                data = await DatabaseTableSchemaHub.preview(
-                    storage,
-                    table_name=req.table_name,
-                    columns=[column.model_dump() for column in req.columns],
-                    indexes=[index.model_dump() for index in req.indexes],
-                    backup=req.backup,
-                )
-            except KmvException:
-                raise
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "预览表结构变更失败 table=%s: %s",
-                    req.table_name,
-                    exc,
-                    exc_info=exc,
-                )
-                raise KmvException(
-                    error=database_table_exc.DATABASE_TABLE_OPERATION_FAILED_ERROR
-                ) from exc
+        storage = DatabaseCatalogHub.default_storage()
+        try:
+            data = await DatabaseTableSchemaHub.preview(
+                storage,
+                table_name=req.table_name,
+                columns=[column.model_dump() for column in req.columns],
+                indexes=[index.model_dump() for index in req.indexes],
+                backup=req.backup,
+            )
+        except KmvException:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "预览表结构变更失败 table=%s: %s",
+                req.table_name,
+                exc,
+                exc_info=exc,
+            )
+            raise KmvException(
+                error=database_table_exc.DATABASE_TABLE_OPERATION_FAILED_ERROR
+            ) from exc
 
         manual = data.get("manual_plan")
         return AdminDatabaseTableSchemaPreviewRes(
@@ -236,30 +216,30 @@ class AdminDatabaseTableSchemaService:
         req: AdminDatabaseTableSchemaApplyReq,
     ) -> AdminDatabaseTableSchemaApplyRes:
         """执行结构变更；指纹不符、确认不完整或需手动处理时由 Hub 抛错。"""
-        async with AdminDatabaseTableSchemaService._default_storage() as storage:
-            try:
-                data = await DatabaseTableSchemaHub.apply(
-                    storage,
-                    table_name=req.table_name,
-                    confirm_table_name=req.confirm_table_name,
-                    expected_fingerprint=req.expected_fingerprint,
-                    columns=[column.model_dump() for column in req.columns],
-                    indexes=[index.model_dump() for index in req.indexes],
-                    backup=req.backup,
-                    acknowledged_risk_ids=list(req.acknowledged_risk_ids),
-                )
-            except KmvException:
-                raise
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "执行表结构变更失败 table=%s: %s",
-                    req.table_name,
-                    exc,
-                    exc_info=exc,
-                )
-                raise KmvException(
-                    error=database_table_exc.SCHEMA_APPLY_FAILED_ERROR
-                ) from exc
+        storage = DatabaseCatalogHub.default_storage()
+        try:
+            data = await DatabaseTableSchemaHub.apply(
+                storage,
+                table_name=req.table_name,
+                confirm_table_name=req.confirm_table_name,
+                expected_fingerprint=req.expected_fingerprint,
+                columns=[column.model_dump() for column in req.columns],
+                indexes=[index.model_dump() for index in req.indexes],
+                backup=req.backup,
+                acknowledged_risk_ids=list(req.acknowledged_risk_ids),
+            )
+        except KmvException:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "执行表结构变更失败 table=%s: %s",
+                req.table_name,
+                exc,
+                exc_info=exc,
+            )
+            raise KmvException(
+                error=database_table_exc.SCHEMA_APPLY_FAILED_ERROR
+            ) from exc
 
         return AdminDatabaseTableSchemaApplyRes(
             table_name=str(data.get("table_name", req.table_name)),

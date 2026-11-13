@@ -1,8 +1,13 @@
 <template>
   <div class="admin-db-structure">
     <div class="admin-db-structure__block">
-      <div class="spa-section-title admin-db-structure__title">
-        {{ t("adminDatabaseTables.detail.columnsTitle") }}
+      <div class="admin-db-structure__title-row">
+        <div class="spa-section-title admin-db-structure__title">
+          {{ t("adminDatabaseTables.detail.columnsTitle") }}
+        </div>
+        <div v-if="slots['header-actions']" class="admin-db-structure__actions">
+          <slot name="header-actions" />
+        </div>
       </div>
       <div class="admin-db-structure__scroll">
         <table class="admin-db-structure__table">
@@ -75,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+import { useSlots } from "vue";
 import { useI18n } from "vue-i18n";
 
 import type {
@@ -87,6 +93,7 @@ defineProps<{
   indexes: AdminDatabaseTableIndexRes[];
 }>();
 
+const slots = useSlots();
 const { t } = useI18n();
 
 /** 布尔标记以文案表达，不依赖颜色区分。 */
@@ -117,6 +124,27 @@ function indexKindText(index: AdminDatabaseTableIndexRes): string {
 
 .admin-db-structure__title {
   margin-bottom: 8px;
+}
+
+/* 标题与右侧操作同一行：结构页把「编辑结构 / 删除表」并入此处，避免顶部单独占一行。 */
+.admin-db-structure__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.admin-db-structure__title-row .admin-db-structure__title {
+  margin-bottom: 0;
+}
+
+.admin-db-structure__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
 }
 
 .admin-db-structure__scroll {

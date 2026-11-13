@@ -21,4 +21,8 @@ export default {
   collapseChildren: "Collapse submenu of {label}",
   tablesLoading: "Loading tables...",
   tablesEmpty: "No tables in this database",
+  tableStructure: "Structure",
+  tableData: "Data",
+  expandTable: "Expand views of {label}",
+  collapseTable: "Collapse views of {label}",
 };

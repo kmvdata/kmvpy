@@ -184,24 +184,79 @@
                       "
                       class="admin-nav-children admin-nav-children--nested"
                     >
-                      <a
+                      <template
                         v-for="table in child.children"
                         :key="table.id"
-                        class="nav-item admin-nav-leaf"
-                        :class="{ active: isTableNavActive(table) }"
-                        :href="table.toUri"
-                        :aria-current="
-                          isTableNavActive(table) ? 'page' : undefined
-                        "
-                        @click.prevent="openTableNav(table)"
                       >
-                        <span class="nav-icon admin-nav-leaf__icon">
-                          <q-icon name="table_chart" size="12px" />
-                        </span>
-                        <span class="nav-label admin-nav-leaf__label mono">
-                          {{ table.label }}
-                        </span>
-                      </a>
+                        <div class="admin-nav-row">
+                          <a
+                            class="nav-item admin-nav-leaf admin-nav-row__link"
+                            :class="{
+                              active: isTableNavActive(table),
+                              'is-expanded': isTableItemExpanded(table.id),
+                            }"
+                            :href="table.toUri"
+                            :aria-current="
+                              isTableNavActive(table) ? 'page' : undefined
+                            "
+                            @click.prevent="openTableNav(table)"
+                          >
+                            <span class="nav-icon admin-nav-leaf__icon">
+                              <q-icon name="table_chart" size="12px" />
+                            </span>
+                            <span
+                              class="nav-label admin-nav-leaf__label mono"
+                            >
+                              {{ table.label }}
+                            </span>
+                          </a>
+                          <q-btn
+                            flat
+                            dense
+                            round
+                            size="sm"
+                            class="admin-nav-leaf__toggle"
+                            :icon="
+                              isTableItemExpanded(table.id)
+                                ? 'expand_less'
+                                : 'expand_more'
+                            "
+                            :aria-label="tableItemToggleLabel(table)"
+                            :aria-expanded="isTableItemExpanded(table.id)"
+                            @click="toggleTableItem(table.id)"
+                          />
+                        </div>
+                        <div
+                          v-if="isTableItemExpanded(table.id)"
+                          class="admin-nav-children admin-nav-children--deep"
+                        >
+                          <a
+                            v-for="view in table.views"
+                            :key="view.id"
+                            class="nav-item admin-nav-leaf admin-nav-leaf--deep"
+                            :class="{ active: isTableLeafActive(view) }"
+                            :href="view.toUri"
+                            :aria-current="
+                              isTableLeafActive(view) ? 'page' : undefined
+                            "
+                            @click.prevent="openTableView(view)"
+                          >
+                            <span class="nav-icon admin-nav-leaf__icon">
+                              <q-icon
+                                :name="
+                                  view.view === 'data'
+                                    ? 'dataset'
+                                    : 'view_column'
+                                "
+                                size="12px"
+                              />
+                            </span>
+                            <span class="nav-label admin-nav-leaf__label">
+                              {{ view.label }}
+                            </span>
+                          </a>
+                        </div>
+                      </template>
                       <div
                         v-if="child.children.length === 0"
                         class="admin-nav-empty admin-nav-empty--nested"
@@ -273,6 +328,18 @@ type AdminNavTarget = {
   subtitle: string;
 };
 
+/** 四级菜单项：某张数据表下的视图入口（结构 / 数据）。 */
+type AdminNavViewLink = {
+  id: string;
+  /** 结构视图不带 view query；数据视图带 view=data。 */
+  view: "structure" | "data";
+  label: string;
+  toUri: string;
+  name: string;
+  params: Record<string, string>;
+  query: Record<string, string>;
+};
+
 /** 三级菜单项：数据库下的每张数据表，跳转时携带 `?table=` 定位。 */
 type AdminNavTableLink = {
   id: string;
@@ -281,6 +348,8 @@ type AdminNavTableLink = {
   name: string;
   params: Record<string, string>;
   query: Record<string, string>;
+  /** 四级视图入口：整行点击进结构视图，右侧箭头展开这两项。 */
+  views: AdminNavViewLink[];
 };
 
 /**
@@ -341,6 +410,11 @@ const collapsedNavItems = reactive<Record<string, boolean>>({});
  * 因此只保留显式展开，避免进入后台即为每个库发起探测。
  */
 const expandedDatabaseItems = reactive<Record<string, boolean>>({});
+/**
+ * 四级视图菜单默认收起：表项整行点击仍直达结构视图，
+ * 只有显式展开才显示「结构 / 数据」两个入口。
+ */
+const expandedTableItems = reactive<Record<string, boolean>>({});
 
 const databaseChildren = computed<AdminNavChild[]>(() =>
   databaseCatalog.databases.map((database) => ({
@@ -353,16 +427,41 @@ const databaseChildren = computed<AdminNavChild[]>(() =>
     metaLabel:
       database.table_count === null ? null : String(database.table_count),
     expandable: true,
-    children: databaseCatalog.tablesOf(database.name).map((table) => ({
-      id: `database-table-${database.name}-${table.name}`,
-      label: table.name,
-      toUri: `/admin/database/${encodeURIComponent(
-        database.name,
-      )}?table=${encodeURIComponent(table.name)}`,
-      name: "admin-database-tables",
-      params: { databaseName: database.name },
-      query: { table: table.name },
-    })),
+    children: databaseCatalog.tablesOf(database.name).map((table) => {
+      const baseUri = `/admin/database/${encodeURIComponent(database.name)}`;
+      const tableUri = `${baseUri}?table=${encodeURIComponent(table.name)}`;
+      const structureQuery = { table: table.name };
+      const dataQuery = { table: table.name, view: "data" };
+      const views: AdminNavViewLink[] = [
+        {
+          id: `database-table-${database.name}-${table.name}-structure`,
+          view: "structure",
+          label: t("layouts.adminNav.tableStructure"),
+          toUri: tableUri,
+          name: "admin-database-tables",
+          params: { databaseName: database.name },
+          query: structureQuery,
+        },
+        {
+          id: `database-table-${database.name}-${table.name}-data`,
+          view: "data",
+          label: t("layouts.adminNav.tableData"),
+          toUri: `${tableUri}&view=data`,
+          name: "admin-database-tables",
+          params: { databaseName: database.name },
+          query: dataQuery,
+        },
+      ];
+      return {
+        id: `database-table-${database.name}-${table.name}`,
+        label: table.name,
+        toUri: tableUri,
+        name: "admin-database-tables",
+        params: { databaseName: database.name },
+        query: structureQuery,
+        views,
+      };
+    }),
   })),
 );
 
@@ -495,11 +594,53 @@ function isDatabaseChildActive(child: AdminNavChild): boolean {
   return !currentTableName();
 }
 
+/** 当前路由的 `?view=` 参数：只有 `data` 表示数据视图，其余均为结构视图。 */
+function currentView(): string {
+  const raw = route.query.view;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return typeof value === "string" ? value : "";
+}
+
+/**
+ * 三级项只在结构视图高亮：数据视图由四级项承担页标记，
+ * 保证全页只有一处 ``aria-current="page"``。
+ */
 function isTableNavActive(table: AdminNavTableLink): boolean {
   if (!isNavTargetActive(table.toUri)) {
     return false;
   }
-  return currentTableName() === table.query.table;
+  if (currentTableName() !== table.query.table) {
+    return false;
+  }
+  return currentView() !== "data";
+}
+
+/** 四级项只在「表 + 视图」同时命中时高亮。 */
+function isTableLeafActive(view: AdminNavViewLink): boolean {
+  if (!isNavTargetActive(view.toUri)) {
+    return false;
+  }
+  if (currentTableName() !== view.query.table) {
+    return false;
+  }
+  return currentView() === (view.view === "data" ? "data" : "");
+}
+
+function isTableItemExpanded(itemId: string): boolean {
+  return expandedTableItems[itemId] === true;
+}
+
+function toggleTableItem(itemId: string) {
+  expandedTableItems[itemId] = !isTableItemExpanded(itemId);
+}
+
+function tableItemToggleLabel(table: AdminNavTableLink): string {
+  return t(
+    isTableItemExpanded(table.id)
+      ? "layouts.adminNav.collapseTable"
+      : "layouts.adminNav.expandTable",
+    { label: table.label },
+  );
 }
 
 function isDatabaseItemExpanded(itemId: string): boolean {
@@ -585,9 +726,29 @@ function openCurrentDatabaseItem() {
   }
 }
 
+/** 当前路由落在某张表的视图上时，自动展开该表的四级菜单。 */
+function openCurrentTableItem() {
+  const tableName = currentTableName();
+  if (!tableName) {
+    return;
+  }
+  const currentPath = currentAdminPath.value;
+  for (const child of databaseChildren.value) {
+    if (normalizeAdminPath(child.toUri) !== currentPath) {
+      continue;
+    }
+    for (const table of child.children) {
+      if (table.query.table === tableName) {
+        expandedTableItems[table.id] = true;
+      }
+    }
+  }
+}
+
 function openCurrentNavPath() {
   openCurrentAdminSection();
   openCurrentDatabaseItem();
+  openCurrentTableItem();
 }
 
 function setDrawerLayout(value: boolean) {
@@ -656,6 +817,21 @@ async function openTableNav(table: AdminNavTableLink) {
       subtitle: t("layouts.adminNav.databaseTablesSub"),
     },
     table.query,
+  );
+}
+
+/** 点击四级视图项：进入该表的结构视图或数据视图。 */
+async function openTableView(view: AdminNavViewLink) {
+  await openNavTarget(
+    {
+      id: view.id,
+      toUri: view.toUri,
+      name: view.name,
+      params: view.params,
+      label: view.label,
+      subtitle: t("layouts.adminNav.databaseTablesSub"),
+    },
+    view.query,
   );
 }
 

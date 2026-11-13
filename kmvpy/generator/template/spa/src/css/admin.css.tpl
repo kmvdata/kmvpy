@@ -338,6 +338,21 @@
   overflow-wrap: anywhere;
 }
 
+/* 四级菜单：某张数据表的视图入口（结构 / 数据） */
+.signal-tracker-page.signal-tracker-admin .admin-nav-children--deep {
+  margin-left: 10px;
+  padding-left: 6px;
+}
+
+.signal-tracker-page.signal-tracker-admin .nav-item.admin-nav-leaf--deep {
+  gap: 4px;
+  padding: 3px 8px;
+}
+
+.signal-tracker-page.signal-tracker-admin .admin-nav-leaf__toggle {
+  flex-shrink: 0;
+}
+
 .signal-tracker-page.signal-tracker-admin .admin-layout__avatar-trigger {
   flex-shrink: 0;
 }

@@ -13,8 +13,12 @@ from __PROJECT_NAME__.common.dto.admin.database_table import (
     AdminDatabaseTableActionReq,
     AdminDatabaseTablesListReq,
 )
+from __PROJECT_NAME__.common.dto.admin.database_table_rows import AdminDatabaseTableRowsReq
 from __PROJECT_NAME__.core.main.service.admin.database_table import (
     AdminDatabaseTableService,
+)
+from __PROJECT_NAME__.core.main.service.admin.database_table_rows import (
+    AdminDatabaseTableRowsService,
 )
 
 router = APIRouter(
@@ -55,4 +59,23 @@ async def api_admin_database_table_drop(
     _ = admin_user
     return ApiResponse.success_response(
         data=await AdminDatabaseTableService.drop_table(req)
+    )
+
+
+@router.post(
+    path="/rows",
+    summary="数据表行数据",
+    description=(
+        "只读分页读取配置库中指定数据表的行数据；"
+        "不接受任何连接参数，不执行任何写操作。"
+    ),
+    tags=["admin_database_table"],
+)
+@api_log
+async def api_admin_database_table_rows(
+    req: AdminDatabaseTableRowsReq,
+    _admin_user: JwtUserInfo = Depends(auth_admin),
+):
+    return ApiResponse.success_response(
+        data=await AdminDatabaseTableRowsService.list_rows(req)
     )

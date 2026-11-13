@@ -69,6 +69,24 @@ class DatabaseCatalogHub:
         )
         raise KmvException(error=database_table_exc.DATABASE_SCOPE_FORBIDDEN_ERROR)
 
+    @classmethod
+    def default_storage(cls) -> DefaultStorage:
+        """取配置声明的默认连接；配置缺失或初始化失败统一收敛为 46001。
+
+        Hub 只管「拿单例 + 错误语义归一」，不进入/退出任何资源；
+        资源生命周期由应用启动/关闭管理，仍留在上层决定。
+        """
+        cls.ensure_allowed_database(None)
+        try:
+            return DefaultStorage.instance()
+        except KmvException:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("默认数据库连接不可用: %s", exc, exc_info=exc)
+            raise KmvException(
+                error=database_table_exc.DATABASE_CONNECTION_INVALID_ERROR
+            ) from exc
+
     @staticmethod
     def _registered_table_names() -> set[str]:
         names: set[str] = set()

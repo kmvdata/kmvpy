@@ -1,6 +1,9 @@
 <template>
   <q-page class="spa-page admin-database-tables-page page-section">
-    <div class="spa-shell spa-shell--wide admin-database-tables__shell">
+    <div
+      class="spa-shell spa-shell--wide admin-database-tables__shell"
+      :class="{ 'admin-database-tables__shell--detail': isTableDetailMode }"
+    >
       <div class="admin-database-tables__header">
         <div class="admin-database-tables__header-copy">
           <h2 class="spa-page-title admin-database-tables__title">
@@ -15,9 +18,6 @@
                   })
             }}
           </h2>
-          <p class="spa-page-subtitle admin-database-tables__subtitle">
-            {{ t("adminDatabaseTables.subtitle") }}
-          </p>
         </div>
       </div>
 
@@ -218,46 +218,49 @@
         class="admin-database-tables__detail-panel"
       >
         <q-inner-loading :showing="loading" color="primary" />
-        <div class="admin-database-tables__detail-toolbar">
-          <q-btn
-            flat
-            dense
-            no-caps
-            icon="arrow_back"
-            :label="t('adminDatabaseTables.actions.backToList')"
-            @click="backToList"
-          />
-          <div v-if="detailTable" class="admin-database-tables__detail-actions">
-            <!-- 详情页入口：与列表行操作共用同一个编辑器组件。 -->
-            <q-btn
-              dense
-              flat
-              no-caps
-              icon="edit_note"
-              color="primary"
-              :label="t('adminDatabaseTables.actions.editSchema')"
-              :disable="hasBlockingAction"
-              @click="openSchemaEditor(detailTable)"
-            />
-            <q-btn
-              dense
-              flat
-              no-caps
-              icon="delete"
-              color="negative"
-              :label="
-                isRowAction(detailTable, 'drop')
-                  ? t('adminDatabaseTables.actions.dropping')
-                  : t('adminDatabaseTables.actions.drop')
-              "
-              :loading="isRowAction(detailTable, 'drop')"
-              :disable="hasBlockingAction"
-              @click="openDropDialog(detailTable)"
-            />
-          </div>
-        </div>
+        <!-- 详情页操作并入「列结构」标题行右侧，不再单独占一行。 -->
         <AdminDatabaseTableStructure
-          v-if="detailTable"
+          v-if="detailTable && currentView === 'structure'"
+          :columns="detailTable.columns"
+          :indexes="detailTable.indexes"
+        >
+          <template #header-actions>
+            <div
+              v-if="detailTable"
+              class="admin-database-tables__detail-actions"
+            >
+              <!-- 详情页入口：与列表行操作共用同一个编辑器组件。 -->
+              <q-btn
+                dense
+                flat
+                no-caps
+                icon="edit_note"
+                color="primary"
+                :label="t('adminDatabaseTables.actions.editSchema')"
+                :disable="hasBlockingAction"
+                @click="openSchemaEditor(detailTable)"
+              />
+              <q-btn
+                dense
+                flat
+                no-caps
+                icon="delete"
+                color="negative"
+                :label="
+                  isRowAction(detailTable, 'drop')
+                    ? t('adminDatabaseTables.actions.dropping')
+                    : t('adminDatabaseTables.actions.drop')
+                "
+                :loading="isRowAction(detailTable, 'drop')"
+                :disable="hasBlockingAction"
+                @click="openDropDialog(detailTable)"
+              />
+            </div>
+          </template>
+        </AdminDatabaseTableStructure>
+        <AdminDatabaseTableDataPanel
+          v-else-if="detailTable && currentView === 'data'"
+          :table-name="detailTable.table_name"
           :columns="detailTable.columns"
           :indexes="detailTable.indexes"
         />
@@ -288,6 +291,7 @@ import { ApiAdminDatabaseTable } from "src/network/api/admin/database_table";
 import type { AdminDatabaseTableRes } from "src/network/dto/admin/database_table";
 import { useKmvApiErrorMessage } from "src/i18n/kmv/useKmvApiErrorMessage";
 import { useDatabaseCatalogStore } from "src/stores/databaseCatalog";
+import AdminDatabaseTableDataPanel from "src/pages/admin/database/AdminDatabaseTableDataPanel.vue";
 import AdminDatabaseTableSchemaEditor from "src/pages/admin/database/AdminDatabaseTableSchemaEditor.vue";
 import AdminDatabaseTableStructure from "src/pages/admin/database/AdminDatabaseTableStructure.vue";
 
@@ -369,8 +373,16 @@ const filteredItems = computed(() => {
   });
 });
 
-/** 携带 `?table=` 时进入单表明细模式：只展示该表的列结构与索引。 */
+/** 携带 `?table=` 时进入单表明细模式：展示该表的结构或数据视图。 */
 const isTableDetailMode = computed(() => highlightedTableName.value !== "");
+
+/**
+ * 详情区视图：默认结构视图，只有显式 `?view=data` 才是数据视图。
+ * 因此历史链接 `/admin/database/<db>?table=x` 行为完全不变。
+ */
+const currentView = computed<"structure" | "data">(() =>
+  route.query.view === "data" ? "data" : "structure",
+);
 
 /** 当前明细模式聚焦的表；加载未完成或该表已不存在时为 null。 */
 const detailTable = computed<AdminDatabaseTableRes | null>(() => {
@@ -462,7 +474,10 @@ function tableRoute(tableName: string): RouteLocationRaw {
   };
 }
 
-/** 从单表页回到列表：只清掉 `?table=`，仍停留在当前数据库范围。 */
+/**
+ * 从单表页回到列表：同时清掉 `?table=` 与 `?view=`，仍停留在当前数据库范围。
+ * 否则删除表后回到列表时，残留的 view 会让下一次进入详情误落数据视图。
+ */
 function backToList() {
   void router.replace({ query: {} });
 }
@@ -605,6 +620,11 @@ onMounted(() => {
   gap: 16px;
 }
 
+/* 单表明细模式收紧顶部库名与结构区之间的空档，让结构页更紧凑。 */
+.admin-database-tables__shell--detail {
+  gap: 10px;
+}
+
 .admin-database-tables__header,
 .admin-database-tables__toolbar,
 .admin-database-tables__summary-line,
@@ -623,11 +643,7 @@ onMounted(() => {
 }
 
 .admin-database-tables__title {
-  margin: 8px 0 4px;
-}
-
-.admin-database-tables__subtitle {
-  margin: 0;
+  margin: 4px 0 0;
 }
 
 .admin-database-tables__card,
@@ -756,22 +772,16 @@ onMounted(() => {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-height: 120px;
 }
 
-.admin-database-tables__detail-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
+/* 作为「列结构」标题行插槽内容渲染，右对齐由标题行负责。 */
 .admin-database-tables__detail-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-left: auto;
+  align-items: center;
+  gap: 4px;
 }
 
 .admin-database-tables__detail-missing {

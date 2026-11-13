@@ -2,6 +2,8 @@ import { postAdminApi } from "src/boot/axios_admin";
 import type {
   AdminDatabaseTableActionReq,
   AdminDatabaseTableActionRes,
+  AdminDatabaseTableRowsReq,
+  AdminDatabaseTableRowsRes,
   AdminDatabaseTablesListReq,
   AdminDatabaseTablesListRes,
 } from "src/network/dto/admin/database_table";
@@ -32,6 +34,17 @@ export class ApiAdminDatabaseTable {
       "/api/admin/database_table/drop",
       requestData,
       "删除数据库表失败",
+    );
+  }
+
+  /** 只读分页读取表数据；不执行任何写操作。 */
+  static listRows(
+    requestData: AdminDatabaseTableRowsReq,
+  ): Promise<AdminDatabaseTableRowsRes> {
+    return postAdminApi<AdminDatabaseTableRowsReq, AdminDatabaseTableRowsRes>(
+      "/api/admin/database_table/rows",
+      requestData,
+      "读取数据表行数据失败",
     );
   }
 

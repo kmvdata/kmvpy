@@ -46,6 +46,9 @@ export default {
       "This change cannot be executed automatically. Follow the generated manual plan.",
     "46011":
       "Applying the schema change failed and was rolled back to the previous state.",
+    "46012": "A column used by the filter or sorting does not exist.",
+    "46013":
+      "The filter is invalid or contains disallowed content. Only comparisons, LIKE/ILIKE, IN, BETWEEN, IS NULL and AND/OR/NOT are supported.",
     "47001": "The service restart confirmation text does not match.",
     "47002":
       "Could not find deploy.sh for the current runtime configuration, so the admin panel cannot trigger a restart.",

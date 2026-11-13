@@ -59,3 +59,15 @@ SCHEMA_APPLY_FAILED_ERROR = [
     "结构变更执行失败",
     "结构变更执行失败，已回滚到执行前状态",
 ]
+
+DATABASE_TABLE_COLUMN_UNKNOWN_ERROR = [
+    46012,
+    "未知列",
+    "查询条件或排序使用的列不存在",
+]
+
+QUERY_CLAUSE_SYNTAX_INVALID_ERROR = [
+    46013,
+    "查询条件不合法",
+    "查询条件不合法或包含不允许的内容，仅支持比较、LIKE/ILIKE、IN、BETWEEN、IS NULL 与 AND/OR/NOT",
+]
