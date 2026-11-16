@@ -96,9 +96,9 @@ def test_generated_dependency_contract(tmp_path: Path) -> None:
     assert metadata["build-system"]["requires"] == ["setuptools>=77.0.3"]
     assert metadata["project"]["requires-python"] == ">=3.11"
     # The generated application receives all runtime drivers from the framework's extras.
-    assert metadata["project"]["dependencies"] == ["kmvpy[mysql]>=0.2.3,<0.3"]
+    assert metadata["project"]["dependencies"] == ["kmvpy[mysql]>=0.2.4,<0.3"]
     assert metadata["project"]["optional-dependencies"] == {
-        "test": ["kmvpy[test]>=0.2.3,<0.3"]
+        "test": ["kmvpy[test]>=0.2.4,<0.3"]
     }
     for filename in ("README.md", "README.en.md"):
         readme = (project_root / filename).read_text(encoding="utf-8")

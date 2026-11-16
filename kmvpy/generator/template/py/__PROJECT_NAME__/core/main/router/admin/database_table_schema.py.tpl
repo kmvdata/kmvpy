@@ -18,7 +18,7 @@ from __PROJECT_NAME__.common.dto.admin.database_table_schema import (
     AdminDatabaseTableSchemaPreviewReq,
     AdminDatabaseTableSchemaReq,
 )
-from __PROJECT_NAME__.core.main.service.admin.database_table_schema import (
+from __PROJECT_NAME__.core.main.service.admin.database.table_schema import (
     AdminDatabaseTableSchemaService,
 )
 

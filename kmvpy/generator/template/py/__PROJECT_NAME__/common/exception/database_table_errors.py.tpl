@@ -71,3 +71,9 @@ QUERY_CLAUSE_SYNTAX_INVALID_ERROR = [
     "查询条件不合法",
     "查询条件不合法或包含不允许的内容，仅支持比较、LIKE/ILIKE、IN、BETWEEN、IS NULL 与 AND/OR/NOT",
 ]
+
+DATABASE_TABLE_ROW_LIMIT_EXCEEDED_ERROR = [
+    46014,
+    "行数上限超额",
+    "为保护数据安全，单次查询最多返回 10000 行，请调小 LIMIT",
+]

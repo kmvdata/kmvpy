@@ -367,6 +367,7 @@ export default {
       rowRange: "Rows {from}-{to}",
       total: "{total} rows in total",
       totalUnknown: "≥ {count} rows",
+      totalCapped: "{total} rows in total, already capped by LIMIT",
       prevPage: "Previous page",
       nextPage: "Next page",
       cellNull: "Empty value",
@@ -382,6 +383,15 @@ export default {
         orderByPlaceholder: "e.g. create_time DESC, id ASC",
         orderByAria: "ORDER BY clause",
         clearOrderBy: "Clear the ORDER BY clause",
+        limitPlaceholder: "Default 100, range 1-10000",
+        limitAria: "LIMIT row cap",
+        limitHint:
+          "LIMIT caps how many rows this query may return; out-of-range values are not applied",
+        limitInvalidNumber: "LIMIT must be an integer",
+        limitTooSmall: "LIMIT must be at least 1",
+        limitTooLarge:
+          "To protect data safety, a single query returns at most 10000 rows. Lower the LIMIT.",
+        appliedLimit: "Showing at most the first {limit} rows",
         apply: "Apply",
         reset: "Reset",
         keyboardHint: "Ctrl/⌘ + Enter inside a field also applies",
@@ -389,7 +399,8 @@ export default {
           "Supports = != < <= > >=, LIKE/ILIKE, IN, BETWEEN, IS NULL and AND/OR/NOT; column names must exist in this table",
         dirtyHint:
           "Conditions changed but not applied yet; the current result still uses the last applied conditions.",
-        appliedNone: "No WHERE condition is applied; browsing the whole table.",
+        appliedNone:
+          "No WHERE or ORDER BY clause is applied; browsing all data.",
         appliedWhere: "Applied WHERE condition: {clause}",
       },
       errors: {

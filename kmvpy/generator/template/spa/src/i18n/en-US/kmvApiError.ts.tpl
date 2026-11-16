@@ -49,6 +49,8 @@ export default {
     "46012": "A column used by the filter or sorting does not exist.",
     "46013":
       "The filter is invalid or contains disallowed content. Only comparisons, LIKE/ILIKE, IN, BETWEEN, IS NULL and AND/OR/NOT are supported.",
+    "46014":
+      "To protect data safety, a single query returns at most 10000 rows. Lower the LIMIT.",
     "47001": "The service restart confirmation text does not match.",
     "47002":
       "Could not find deploy.sh for the current runtime configuration, so the admin panel cannot trigger a restart.",

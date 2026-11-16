@@ -14,10 +14,10 @@ from __PROJECT_NAME__.common.dto.admin.database_table import (
     AdminDatabaseTablesListReq,
 )
 from __PROJECT_NAME__.common.dto.admin.database_table_rows import AdminDatabaseTableRowsReq
-from __PROJECT_NAME__.core.main.service.admin.database_table import (
+from __PROJECT_NAME__.core.main.service.admin.database.table import (
     AdminDatabaseTableService,
 )
-from __PROJECT_NAME__.core.main.service.admin.database_table_rows import (
+from __PROJECT_NAME__.core.main.service.admin.database.table_rows import (
     AdminDatabaseTableRowsService,
 )
 
@@ -68,6 +68,8 @@ async def api_admin_database_table_drop(
     description=(
         "只读分页读取配置库中指定数据表的行数据；"
         "不接受任何连接参数，不执行任何写操作。"
+        "row_limit 限制本次查询最多返回的行数（默认 100、范围 1-10000），"
+        "超过 10000 按数据安全拒绝。"
     ),
     tags=["admin_database_table"],
 )

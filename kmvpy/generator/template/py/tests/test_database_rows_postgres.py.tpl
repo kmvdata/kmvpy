@@ -196,6 +196,23 @@ class DatabaseRowsReadOnlyTest(unittest.IsolatedAsyncioTestCase):
             self.skipTest(f"当前库不存在表 {TABLE_NAME}")
         self.assertIsInstance(raw["total"], int)
 
+    # -- LIMIT 结果窗口 --
+
+    async def test_row_limit_caps_first_page(self) -> None:
+        """LIMIT 小于每页行数时，首页只能返回窗口内的行。"""
+        raw = await self._read(page=1, size=50, row_limit=3)
+        if not raw["exists"]:
+            self.skipTest(f"当前库不存在表 {TABLE_NAME}")
+        self.assertLessEqual(len(raw["rows"]), 3)
+
+    async def test_row_limit_window_ends_pagination(self) -> None:
+        """窗口外的页返回空结果，而不是退回成未受限读取。"""
+        first = await self._read(page=1, size=1, row_limit=1)
+        if not first["exists"]:
+            self.skipTest(f"当前库不存在表 {TABLE_NAME}")
+        beyond = await self._read(page=2, size=1, row_limit=1)
+        self.assertEqual(beyond["rows"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

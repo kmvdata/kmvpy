@@ -176,7 +176,7 @@ python -m pip install build "setuptools>=77.0.3"
 
 远程 `deploy.sh` 先安装应用 wheel，再安装并校验 `KMVPY_VERSION` 指定的 `kmvpy[mysql]` 版本，然后执行可选密钥轮换并启动服务。完整流程见生成的 `docs/ops-biu-release-guide.md`。
 
-`kmvpy update` 保留既有业务代码、配置和依赖声明，只补缺失文件，并针对受支持的旧发布脚本作升级。已有工程升级到本次依赖契约时，应人工同步 `pyproject.toml`、`deploy.sh` 和 `biu`：默认依赖使用 `kmvpy[mysql]>=0.2.3,<0.3`，测试依赖使用 `kmvpy[test]>=0.2.3,<0.3`，并同步部署脚本固定版本。不要预期 update 覆盖已存在的业务入口或依赖文件。
+`kmvpy update` 保留既有业务代码、配置和依赖声明，只补缺失文件，并针对受支持的旧发布脚本作升级。已有工程升级到本次依赖契约时，应人工同步 `pyproject.toml`、`deploy.sh` 和 `biu`：默认依赖使用 `kmvpy[mysql]>=0.2.4,<0.3`，测试依赖使用 `kmvpy[test]>=0.2.4,<0.3`，并同步部署脚本固定版本。不要预期 update 覆盖已存在的业务入口或依赖文件。
 
 ## 维护生成器
 

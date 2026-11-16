@@ -16,7 +16,8 @@
       </div>
     </q-banner>
 
-    <!-- 查询条件：WHERE 必填、ORDER BY 可选；两行同高，输入占满整行。 -->
+    <!-- 查询条件：WHERE 独占一行；ORDER BY 与 LIMIT 共用一行，
+         LIMIT 固定靠右，其余伸缩空间留给 ORDER BY。 -->
     <div class="db-data-panel__query">
       <div class="db-data-panel__query-rows">
         <div class="db-data-panel__query-row">
@@ -86,46 +87,89 @@
           </q-btn>
         </div>
 
-        <div class="db-data-panel__query-row">
-          <q-icon
-            name="swap_vert"
-            size="16px"
-            class="db-data-panel__query-icon"
-            aria-hidden="true"
-          />
-          <div class="db-data-panel__query-code">
-            <span class="mono db-data-panel__query-keyword" aria-hidden="true">
-              ORDER BY
-            </span>
-            <q-input
-              v-model="orderByDraft"
-              borderless
-              dense
-              class="mono db-data-panel__query-input"
-              :placeholder="t('adminDatabaseTables.data.query.orderByPlaceholder')"
-              :aria-label="t('adminDatabaseTables.data.query.orderByAria')"
-              :maxlength="ORDER_BY_MAX_LENGTH"
-              :disable="loading"
-              @keydown.ctrl.enter.prevent="applyQuery"
-              @keydown.meta.enter.prevent="applyQuery"
+        <!-- ORDER BY 与 LIMIT 共用一行：LIMIT 固定靠右，其余空间留给排序条件。 -->
+        <div class="db-data-panel__query-pair">
+          <div class="db-data-panel__query-row">
+            <q-icon
+              name="swap_vert"
+              size="16px"
+              class="db-data-panel__query-icon"
+              aria-hidden="true"
             />
+            <div class="db-data-panel__query-code">
+              <span class="mono db-data-panel__query-keyword" aria-hidden="true">
+                ORDER BY
+              </span>
+              <q-input
+                v-model="orderByDraft"
+                borderless
+                dense
+                class="mono db-data-panel__query-input"
+                :placeholder="t('adminDatabaseTables.data.query.orderByPlaceholder')"
+                :aria-label="t('adminDatabaseTables.data.query.orderByAria')"
+                :maxlength="ORDER_BY_MAX_LENGTH"
+                :disable="loading"
+                @keydown.ctrl.enter.prevent="applyQuery"
+                @keydown.meta.enter.prevent="applyQuery"
+              />
+            </div>
+            <q-btn
+              v-if="orderByDraft !== ''"
+              flat
+              dense
+              round
+              size="sm"
+              icon="close"
+              class="db-data-panel__query-clear"
+              :aria-label="t('adminDatabaseTables.data.query.clearOrderBy')"
+              :disable="loading"
+              @click="clearQueryField('order')"
+            >
+              <q-tooltip>
+                {{ t("adminDatabaseTables.data.query.clearOrderBy") }}
+              </q-tooltip>
+            </q-btn>
           </div>
-          <q-btn
-            v-if="orderByDraft !== ''"
-            flat
-            dense
-            round
-            size="sm"
-            icon="close"
-            class="db-data-panel__query-clear"
-            :aria-label="t('adminDatabaseTables.data.query.clearOrderBy')"
-            :disable="loading"
-            @click="clearQueryField('order')"
+
+          <div
+            class="db-data-panel__query-row db-data-panel__query-row--limit"
+            :class="{ 'is-invalid': Boolean(rowLimitError) }"
           >
-            <q-tooltip>
-              {{ t("adminDatabaseTables.data.query.clearOrderBy") }}
-            </q-tooltip>
-          </q-btn>
+            <q-icon
+              name="format_list_numbered"
+              size="16px"
+              class="db-data-panel__query-icon"
+              aria-hidden="true"
+            />
+            <div class="db-data-panel__query-code">
+              <span class="mono db-data-panel__query-keyword" aria-hidden="true">
+                LIMIT
+              </span>
+              <q-input
+                v-model="rowLimitDraft"
+                borderless
+                dense
+                hide-bottom-space
+                inputmode="numeric"
+                class="mono db-data-panel__query-input db-data-panel__query-input--limit"
+                :placeholder="t('adminDatabaseTables.data.query.limitPlaceholder')"
+                :aria-label="t('adminDatabaseTables.data.query.limitAria')"
+                :error="Boolean(rowLimitError)"
+                :maxlength="ROW_LIMIT_MAX_LENGTH"
+                :disable="loading"
+                @keydown.ctrl.enter.prevent="applyQuery"
+                @keydown.meta.enter.prevent="applyQuery"
+              />
+            </div>
+          </div>
+        </div>
+        <!-- 就地校验：非法 LIMIT 不提交查询，也不静默按默认值兜底。 -->
+        <div
+          v-if="rowLimitError"
+          class="db-data-panel__query-error"
+          role="alert"
+        >
+          {{ rowLimitError }}
         </div>
       </div>
 
@@ -136,7 +180,7 @@
           color="primary"
           icon="play_arrow"
           :label="t('adminDatabaseTables.data.query.apply')"
-          :disable="loading"
+          :disable="loading || Boolean(rowLimitError)"
           @click="applyQuery"
         />
         <q-btn
@@ -149,6 +193,9 @@
         />
         <span class="db-data-panel__query-hint">
           {{ t("adminDatabaseTables.data.query.grammarHint") }}
+        </span>
+        <span class="db-data-panel__query-hint">
+          {{ t("adminDatabaseTables.data.query.limitHint") }}
         </span>
 
         <!-- 视图设置：与条件应用同一行，贴近下方表格。 -->
@@ -213,7 +260,11 @@
         </div>
       </div>
     </div>
-    <div class="db-data-panel__hint">{{ queryStateText }}</div>
+    <div class="db-data-panel__hint">
+      <span>{{ queryStateText }}</span>
+      <span class="db-data-panel__hint-sep" aria-hidden="true">·</span>
+      <span>{{ appliedLimitText }}</span>
+    </div>
 
     <div class="db-data-panel__table-wrap">
       <q-inner-loading :showing="loading" color="primary" />
@@ -367,7 +418,6 @@ import { useI18n } from "vue-i18n";
 import { ApiAdminDatabaseTable } from "src/network/api/admin/database_table";
 import type {
   AdminDatabaseTableColumnRes,
-  AdminDatabaseTableIndexRes,
   AdminDatabaseTableRowsCellRes,
   AdminDatabaseTableRowsColumnRes,
 } from "src/network/dto/admin/database_table";
@@ -376,7 +426,6 @@ import { useKmvApiErrorMessage } from "src/i18n/kmv/useKmvApiErrorMessage";
 const props = defineProps<{
   tableName: string;
   columns: AdminDatabaseTableColumnRes[];
-  indexes: AdminDatabaseTableIndexRes[];
 }>();
 
 const { t } = useI18n();
@@ -387,6 +436,12 @@ const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const DEFAULT_PAGE_SIZE = 50;
 const WHERE_MAX_LENGTH = 500;
 const ORDER_BY_MAX_LENGTH = 200;
+/** LIMIT 默认值、下限与上限；上限超过即拒绝，不做静默收敛。 */
+const DEFAULT_ROW_LIMIT = 100;
+const MIN_ROW_LIMIT = 1;
+const MAX_ROW_LIMIT = 10000;
+/** LIMIT 输入框长度上限：10000 为 5 位，更长输入无需接受。 */
+const ROW_LIMIT_MAX_LENGTH = 5;
 
 const dataColumns = ref<AdminDatabaseTableRowsColumnRes[]>([]);
 const rows = ref<AdminDatabaseTableRowsCellRes[][]>([]);
@@ -402,6 +457,10 @@ const loaded = ref(false);
 const errorText = ref("");
 const whereDraft = ref("");
 const orderByDraft = ref("");
+/** LIMIT 草稿与已生效值分开：输入非法时保留用户输入，但不下发查询。 */
+const rowLimitDraft = ref(String(DEFAULT_ROW_LIMIT));
+const appliedRowLimit = ref(DEFAULT_ROW_LIMIT);
+const totalTruncated = ref(false);
 /**
  * 已提交给后端的条件：只有「应用条件」、排序切换与重置会写入。
  * 草稿与它不一致时界面提示未生效，避免用户以为改动已作用于当前结果。
@@ -433,11 +492,36 @@ function normalizeClause(text: string): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+/** LIMIT 草稿与已生效值是否一致；非法输入同样视为未生效。 */
+const rowLimitDirty = computed(
+  () => Number(rowLimitDraft.value.trim()) !== appliedRowLimit.value,
+);
+
+/**
+ * LIMIT 就地校验：空值、非整数、越界都返回提示文案，合法时返回空串。
+ * 越界不自动夹取——数据安全上限必须让用户看到明确拒绝。
+ */
+const rowLimitError = computed(() => {
+  const raw = rowLimitDraft.value.trim();
+  if (!/^\d+$/.test(raw)) {
+    return t("adminDatabaseTables.data.query.limitInvalidNumber");
+  }
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < MIN_ROW_LIMIT) {
+    return t("adminDatabaseTables.data.query.limitTooSmall");
+  }
+  if (value > MAX_ROW_LIMIT) {
+    return t("adminDatabaseTables.data.query.limitTooLarge");
+  }
+  return "";
+});
+
 /** 草稿是否还有未提交的改动。 */
 const queryDirty = computed(
   () =>
     normalizeClause(whereDraft.value) !== appliedWhere.value ||
-    normalizeClause(orderByDraft.value) !== appliedOrderBy.value,
+    normalizeClause(orderByDraft.value) !== appliedOrderBy.value ||
+    rowLimitDirty.value,
 );
 
 /** 条件区的一行状态说明：优先提示未提交的改动，其次说明当前过滤范围。 */
@@ -452,6 +536,13 @@ const queryStateText = computed(() => {
     clause: appliedWhere.value,
   });
 });
+
+/** LIMIT 始终生效，因此单独一段说明，不与 WHERE 的三种状态混写。 */
+const appliedLimitText = computed(() =>
+  t("adminDatabaseTables.data.query.appliedLimit", {
+    limit: appliedRowLimit.value,
+  }),
+);
 
 const visibleColumns = computed(() =>
   dataColumns.value.filter((item) => !hiddenColumns.value.has(item.name)),
@@ -501,10 +592,14 @@ const displayRows = computed(() =>
 
 const hasNextPage = computed(() => {
   if (total.value !== null) {
+    // total 已按 LIMIT 收敛，因此这里天然不会越过结果窗口。
     return page.value * pageSize.value < total.value;
   }
-  // 总数未知时用“本页是否满”判断是否还有下一页。
-  return rows.value.length === pageSize.value;
+  // 总数未知时用“本页是否满”判断是否还有下一页，并额外确认没有越过窗口。
+  return (
+    rows.value.length === pageSize.value &&
+    page.value * pageSize.value < appliedRowLimit.value
+  );
 });
 
 const rangeText = computed(() => {
@@ -518,7 +613,10 @@ const rangeText = computed(() => {
 
 const totalText = computed(() => {
   if (total.value !== null) {
-    return t("adminDatabaseTables.data.total", { total: total.value });
+    // 被 LIMIT 截断时明确说明，避免把窗口内的行数误读成整表总量。
+    return totalTruncated.value
+      ? t("adminDatabaseTables.data.totalCapped", { total: total.value })
+      : t("adminDatabaseTables.data.total", { total: total.value });
   }
   // 总数只在第一页读取；翻页后给保守下界，不假装精确。
   const known = (page.value - 1) * pageSize.value + rows.value.length;
@@ -595,6 +693,7 @@ async function load(): Promise<void> {
       order_desc: orderDesc.value,
       where_clause: appliedWhere.value,
       order_by_clause: appliedOrderBy.value,
+      row_limit: appliedRowLimit.value,
     });
     if (current !== requestSeq) {
       return;
@@ -603,6 +702,10 @@ async function load(): Promise<void> {
     rows.value = res.rows;
     primaryKeyColumns.value = res.primary_key_columns;
     total.value = res.total;
+    // 只有第一页会带回总数；翻页时保留上一页的截断结论，不误报为未截断。
+    if (res.total !== null) {
+      totalTruncated.value = res.total_truncated;
+    }
     loaded.value = true;
   } catch (error) {
     if (current !== requestSeq) {
@@ -665,8 +768,13 @@ function toggleSort(columnName: string): void {
  * 语法与列名由后端受限查询语言校验，失败以 46013 / 46012 返回并显示在顶部提示区。
  */
 function applyQuery(): void {
+  // LIMIT 非法时不提交：先让用户看到就地提示，而不是悄悄按默认值查询。
+  if (rowLimitError.value) {
+    return;
+  }
   appliedWhere.value = normalizeClause(whereDraft.value);
   appliedOrderBy.value = normalizeClause(orderByDraft.value);
+  appliedRowLimit.value = Number(rowLimitDraft.value.trim());
   page.value = 1;
   void load();
 }
@@ -686,18 +794,18 @@ function clearQueryField(target: "where" | "order"): void {
 }
 
 /**
- * 重置回到初始视图：无 WHERE 条件 + 默认排序，并立即生效。
- * 它表达的是「回到初始查询」，因此会重新读取第一页数据。
+ * 重置回到初始视图：无 WHERE、无 ORDER BY、LIMIT 回到 100，并立即生效。
+ * 三空即「选择全部」：不再恢复任何隐式排序，因此不会出现用户没要求过的顺序。
  */
 function resetQuery(): void {
   whereDraft.value = "";
   appliedWhere.value = null;
-  const defaultOrderBy =
-    orderBy.value === null
-      ? null
-      : `${orderBy.value} ${orderDesc.value ? "DESC" : "ASC"}`;
-  orderByDraft.value = defaultOrderBy ?? "";
-  appliedOrderBy.value = defaultOrderBy;
+  orderBy.value = null;
+  orderDesc.value = false;
+  orderByDraft.value = "";
+  appliedOrderBy.value = null;
+  rowLimitDraft.value = String(DEFAULT_ROW_LIMIT);
+  appliedRowLimit.value = DEFAULT_ROW_LIMIT;
   page.value = 1;
   void load();
 }
@@ -735,14 +843,16 @@ function resetForTable(): void {
   loaded.value = false;
   errorText.value = "";
   hiddenColumns.value = new Set();
+  // 三空即「选择全部」：WHERE 与 ORDER BY 都留空，LIMIT 回到默认 100。
+  // 不再按主键索引预填排序，否则进入数据视图就隐式改变了结果顺序与界面文案。
   whereDraft.value = "";
   appliedWhere.value = null;
-  // 默认按首个主键列排序；没有主键时不指定排序。
-  const primaryIndex = props.indexes.find((index) => index.primary);
-  const primaryColumn = primaryIndex?.columns[0] ?? "";
-  orderBy.value = primaryColumn || null;
-  orderByDraft.value = primaryColumn ? `${primaryColumn} ASC` : "";
-  appliedOrderBy.value = orderByDraft.value === "" ? null : orderByDraft.value;
+  orderBy.value = null;
+  orderByDraft.value = "";
+  appliedOrderBy.value = null;
+  rowLimitDraft.value = String(DEFAULT_ROW_LIMIT);
+  appliedRowLimit.value = DEFAULT_ROW_LIMIT;
+  totalTruncated.value = false;
 }
 
 watch(
@@ -795,6 +905,10 @@ watch(hiddenColumns, (hidden) => {
 }
 
 .db-data-panel__query {
+  /* 条件区行高与控件高度共用这一局部变量：normal 为 40px，large 随
+     --kfw-input-height 一起长高，避免每个条件行各自写死不同像素。 */
+  --db-query-row-height: var(--kfw-input-height, 40px);
+
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -806,12 +920,31 @@ watch(hiddenColumns, (hidden) => {
   gap: 8px;
 }
 
+/* ORDER BY 与 LIMIT 共用一行：左侧条件行吃掉剩余宽度，右侧 LIMIT 固定宽度。 */
+.db-data-panel__query-pair {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 排序行可伸缩：min-width 归零，长条件只在输入框内滚动，不撑出横向溢出。 */
+.db-data-panel__query-pair > .db-data-panel__query-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* LIMIT 行不参与伸缩；宽度由关键字与固定宽度的输入框决定。 */
+.db-data-panel__query-pair > .db-data-panel__query-row--limit {
+  flex: 0 0 auto;
+}
+
 .db-data-panel__query-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  /* 两行等高：单行文字 + 统一内边距。 */
-  min-height: 40px;
+  /* 条件行等高：单行文字 + 统一内边距，并随字号模式一起长高。 */
+  min-height: var(--db-query-row-height);
   padding: 0 6px 0 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -842,7 +975,7 @@ watch(hiddenColumns, (hidden) => {
   font-size: var(--spa-font-size-small);
 }
 
-/* 两行关键字等宽，保证两个输入框的左边缘上下对齐。 */
+/* WHERE 与 ORDER BY 关键字等宽，保证两个输入框的左边缘上下对齐。 */
 .db-data-panel__query-keyword {
   flex: none;
   min-width: 8ch;
@@ -852,15 +985,29 @@ watch(hiddenColumns, (hidden) => {
   user-select: none;
 }
 
+/* LIMIT 靠右独立成块，不需要为对齐 WHERE / ORDER BY 预留 8ch。 */
+.db-data-panel__query-row--limit .db-data-panel__query-keyword {
+  min-width: 0;
+}
+
 .db-data-panel__query-input {
   flex: 1;
   min-width: 0;
   font-size: var(--spa-font-size-small);
 }
 
+/* LIMIT 输入固定 7ch：够显示 5 位数字（上限 10000）与当前值，多余宽度留给 ORDER BY；
+   ch 跟随 --spa-font-size-small，large 字号模式下同比放大。 */
+.db-data-panel__query-input--limit {
+  flex: 0 0 auto;
+  width: 7ch;
+}
+
 /* 输入区不再叠第二层边框，与行底色融为一体，只保留整行的外框。 */
+/* 控件与行共用同一高度：原先固定 36px 小于行高 40px（large 下为 56px），
+   会让输入文字在行内视觉上偏上，不再与左侧关键字基线对齐。 */
 .db-data-panel__query-input :deep(.q-field__control) {
-  min-height: 36px;
+  min-height: var(--db-query-row-height);
   padding: 0;
 }
 
@@ -881,6 +1028,13 @@ watch(hiddenColumns, (hidden) => {
 .db-data-panel__query-hint {
   margin-top: 4px;
   color: var(--workspace-text-muted);
+  font-size: var(--spa-font-size-caption);
+  overflow-wrap: anywhere;
+}
+
+/* LIMIT 就地校验提示：用危险色 + 文本，不只依赖边框颜色表达非法状态。 */
+.db-data-panel__query-error {
+  color: var(--spa-danger);
   font-size: var(--spa-font-size-caption);
   overflow-wrap: anywhere;
 }
@@ -915,6 +1069,10 @@ watch(hiddenColumns, (hidden) => {
   color: var(--workspace-text-muted);
   font-size: var(--spa-font-size-caption);
   overflow-wrap: anywhere;
+}
+
+.db-data-panel__hint-sep {
+  margin: 0 4px;
 }
 
 .db-data-panel__table-wrap {
@@ -1069,6 +1227,17 @@ watch(hiddenColumns, (hidden) => {
 @media (max-width: 720px) {
   .db-data-panel__size {
     width: 100%;
+  }
+
+  /* 窄屏把 ORDER BY 与 LIMIT 拆回两行，避免排序输入被压到无法使用。 */
+  .db-data-panel__query-pair {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .db-data-panel__query-input--limit {
+    flex: 1 1 auto;
+    width: auto;
   }
 
   .db-data-panel__footer {

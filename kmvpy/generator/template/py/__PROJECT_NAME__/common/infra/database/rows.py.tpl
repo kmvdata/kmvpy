@@ -19,6 +19,10 @@
 
 条件里出现反射列之外的列时抛 ``query_lang.UnknownColumnError``，由 Service 转成
 对应业务错误码后返回，绝不降级成“忽略该条件后继续查询”。
+
+``row_limit`` 是结果窗口上限（由 Hub 校验并传入），本模块只做技术换算：把
+「本页还能取多少行」换算成实际下发的 ``LIMIT``，窗口之外直接跳过查询。窗口
+取值本身不属于 Infra 的业务判断，因此这里不设任何阈值常量。
 """
 
 from __future__ import annotations
@@ -55,6 +59,18 @@ MAX_CELL_TEXT_LENGTH = 512
 # 管理端允许手写条件，因此必须给可能退化成全表扫描的条件一个上限，
 # 避免单次请求长期占用连接池。其它方言没有等价的事务级设置，按注释说明跳过。
 STATEMENT_TIMEOUT_MS = 3000
+
+
+def page_limit(size: int, offset: int, row_limit: int | None) -> int:
+    """本页实际下发的 LIMIT：窗口内还能容纳多少行，最少为 0。
+
+    ``row_limit`` 为 ``None`` 表示调用方不设窗口上限（保持旧行为）。返回 0 表示
+    该页已完全落在窗口之外，调用方应跳过查询，而不是依赖各方言对 ``LIMIT 0``
+    的处理差异。
+    """
+    if row_limit is None:
+        return size
+    return max(min(size, row_limit - offset), 0)
 
 
 def normalize_cell(value: Any) -> dict[str, Any]:
@@ -144,6 +160,7 @@ def _read_rows_sync(
     order_desc: bool,
     where_node: WhereNode | None,
     order_terms: tuple[OrderTerm, ...] | None,
+    row_limit: int | None,
 ) -> dict[str, Any]:
     inspector = sa_inspect(sync_conn)
     if not inspector.has_table(table_name):
@@ -191,12 +208,17 @@ def _read_rows_sync(
             statement = statement.order_by(
                 desc(target) if order_desc else asc(target)
             )
-    statement = statement.limit(size).offset((page - 1) * size)
-
-    rows = [
-        [normalize_cell(value) for value in row]
-        for row in sync_conn.execute(statement).all()
-    ]
+    # LIMIT 是结果窗口上限：本页只取窗口内还能容纳的行，窗口之外直接跳过查询。
+    # 总行数仍按过滤条件统计，是否被窗口截断由 Hub 判断，Infra 不做业务收敛。
+    offset = (page - 1) * size
+    limit = page_limit(size, offset, row_limit)
+    rows: list[list[dict[str, Any]]] = []
+    if limit > 0:
+        statement = statement.limit(limit).offset(offset)
+        rows = [
+            [normalize_cell(value) for value in row]
+            for row in sync_conn.execute(statement).all()
+        ]
     total = _count_rows(sync_conn, table, where_expr) if page == 1 else None
     return {
         "table_name": table_name,
@@ -218,11 +240,13 @@ async def read_table_rows(
     order_desc: bool = False,
     where_node: WhereNode | None = None,
     order_terms: tuple[OrderTerm, ...] | None = None,
+    row_limit: int | None = None,
 ) -> dict[str, Any]:
     """只读读取指定表的一页数据；表不存在时返回 ``exists: False``。
 
     ``where_node`` / ``order_terms`` 来自受限查询语言解析结果；为 ``None`` 时退化成
-    无条件、单列排序（与旧契约一致）。
+    无条件、单列排序（与旧契约一致）。``row_limit`` 是结果窗口上限，``None`` 表示
+    不设上限（保持旧行为）。
     """
     started = perf_counter()
     async with engine.connect() as conn:
@@ -235,6 +259,7 @@ async def read_table_rows(
             order_desc,
             where_node,
             order_terms,
+            row_limit,
         )
     raw["elapsed_ms"] = max(int((perf_counter() - started) * 1000), 0)
     return raw

@@ -1,5 +1,15 @@
 # 更新日志
 
+## 0.2.4
+
+- 生成工程的依赖契约收敛：`pyproject.toml` 只声明 `kmvpy[mysql]>=0.2.4,<0.3` 与 `test` extra `kmvpy[test]>=0.2.4,<0.3`，不再重复声明 `cryptography`、`SQLAlchemy`、`aiomysql`，旧的项目级 `mysql`/`postgresql`/`sqlite`/`all` extras 一并移除；构建系统统一为 `setuptools>=77.0.3`。
+- 远程 `deploy.sh` 改为安装 `kmvpy[mysql]==${KMVPY_VERSION}`，发布时自动带入异步 MySQL 驱动，安装后仍校验实际 `kmvpy` 版本；`biu` 构建依赖缺失提示改为 `build setuptools wheel`。
+- 新增管理端数据库浏览模板：`database_catalog`、`database_table`、`database_table_schema`、`database_table_rows` DTO 与对应 Hub、错误码，支持表结构、表数据与库目录查询。
+- ORM 与 DDL 模板继续完善 MySQL 列级 diff、`ALTER`/`MODIFY COLUMN` 渲染与索引同步，并把 PostgreSQL 默认值 `::type` 转换归一化后再比较。
+- 模板实时通讯与登录时效调整：Socket.IO 连接与恢复流程、会话空闲/绝对超时和续签行为对齐。
+- 新增 `.agents/skills` 与 KeepSeek / Codex 共享项目配置，生成的工程直接带后端、ORM、调度与前端开发指南。
+- 首页与文档展示版本同步为 `0.2.4`。
+
 ## 0.2.3
 
 - 首次以 `kmvpy` 名称发布 FastAPI 服务端基础库，提供 YAML 配置、异步 SQLAlchemy 领域层、统一响应与异常、JWT、APScheduler 调度、Socket.IO 和工程脚手架。

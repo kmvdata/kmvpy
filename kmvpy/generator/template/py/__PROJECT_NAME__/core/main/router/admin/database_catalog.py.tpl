@@ -12,7 +12,7 @@ from __PROJECT_NAME__.common.dto.admin.database_catalog import (
     AdminDatabaseCatalogReq,
     AdminDatabaseCatalogTablesReq,
 )
-from __PROJECT_NAME__.core.main.service.admin.database_catalog import (
+from __PROJECT_NAME__.core.main.service.admin.database.catalog import (
     AdminDatabaseCatalogService,
 )
 

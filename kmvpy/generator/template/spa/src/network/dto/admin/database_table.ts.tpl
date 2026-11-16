@@ -54,6 +54,11 @@ export interface AdminDatabaseTableRowsReq {
   page: number;
   /** 每页行数，后端上限 200。 */
   size: number;
+  /**
+   * 本次查询最多返回的行数上限（LIMIT）。默认 100、最小 1、上限 10000；
+   * 超过 10000 后端按数据安全返回 46014，不做静默收敛。
+   */
+  row_limit: number;
   /** 排序列名，必须在当前表列名单内；null 表示不指定排序。 */
   order_by: string | null;
   order_desc: boolean;
@@ -91,10 +96,17 @@ export interface AdminDatabaseTableRowsRes {
   columns: AdminDatabaseTableRowsColumnRes[];
   rows: AdminDatabaseTableRowsCellRes[][];
   primary_key_columns: string[];
-  /** 仅第一页返回总行数，其余页为 null；带 where_clause 时是过滤后的行数。 */
+  /**
+   * 仅第一页返回总行数，其余页为 null；带 where_clause 时是过滤后的行数。
+   * 已按 row_limit 收敛，因此不会超过本次生效的行数上限。
+   */
   total: number | null;
+  /** total 是否已被 row_limit 截断；true 表示实际行数更多。 */
+  total_truncated: boolean;
   page: number;
   size: number;
+  /** 本次生效的行数上限。 */
+  row_limit: number;
   elapsed_ms: number;
   /** 实际生效的 WHERE 条件文本；未提供时为 null。 */
   where_clause: string | null;

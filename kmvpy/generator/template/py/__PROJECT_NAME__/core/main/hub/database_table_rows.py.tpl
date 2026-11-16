@@ -30,6 +30,11 @@ class DatabaseTableRowsHub:
     # 单页上限：与 DTO 的 ``le=200`` 一致，这里只做防御性收敛。
     MAX_PAGE_SIZE = 200
 
+    # 行数上限（LIMIT）：与 DTO 的 ``DEFAULT_ROW_LIMIT`` / ``MAX_ROW_LIMIT`` 一致。
+    # 默认只读 100 行；超过 10000 直接拒绝，而不是悄悄截断成 10000。
+    DEFAULT_ROW_LIMIT = 100
+    MAX_ROW_LIMIT = 10000
+
     # 页码上限：与 DTO 的 ``le=MAX_PAGE`` 一致，这里再收敛一次。
     # 每页是 OFFSET 分页，页码无界就等于允许调用方要求数据库扫描任意深的行。
     MAX_PAGE = 100000
@@ -65,6 +70,25 @@ class DatabaseTableRowsHub:
         safe_page = min(page, cls.MAX_PAGE) if page >= 1 else 1
         safe_size = min(size, cls.MAX_PAGE_SIZE) if size >= 1 else 1
         return safe_page, safe_size
+
+    @classmethod
+    def normalized_row_limit(cls, row_limit: int) -> int:
+        """收敛行数上限：非正数按 1 处理，超过上限直接拒绝（46014）。
+
+        DTO 已用 ``ge=1`` 拦住 0 与负数，这里再兜一次底，避免绕过 DTO 的调用方
+        把非正数带进查询。超过 ``MAX_ROW_LIMIT`` 不做静默 clamp：数据安全拒绝
+        必须让调用方看到明确反馈，而不是拿到被悄悄裁剪的结果。
+        """
+        if row_limit > cls.MAX_ROW_LIMIT:
+            logger.warning(
+                "管理端查询行数上限超限 row_limit=%s max=%s",
+                row_limit,
+                cls.MAX_ROW_LIMIT,
+            )
+            raise KmvException(
+                error=database_table_exc.DATABASE_TABLE_ROW_LIMIT_EXCEEDED_ERROR
+            )
+        return max(row_limit, 1)
 
     @staticmethod
     def normalized_clause(text: str | None) -> str | None:
@@ -164,9 +188,16 @@ class DatabaseTableRowsHub:
         *,
         page: int,
         size: int,
+        row_limit: int,
     ) -> dict[str, Any]:
-        """把 Infra 的原始结构整理成响应字段；不含任何 IO。"""
-        total = raw.get("total")
+        """把 Infra 的原始结构整理成响应字段；不含任何 IO。
+
+        ``total`` 在本层收敛为「过滤后行数」与 ``row_limit`` 的较小值：LIMIT 是结果
+        窗口上限，页脚不应显示窗口之外的行数。窗口是否真的截断了数据单独用
+        ``total_truncated`` 表达，避免把「共 N 行」当成真实总量。
+        """
+        raw_total = raw.get("total")
+        total = min(raw_total, row_limit) if isinstance(raw_total, int) else None
         return {
             "table_name": str(raw.get("table_name") or ""),
             "columns": [
@@ -180,8 +211,10 @@ class DatabaseTableRowsHub:
             "primary_key_columns": [
                 str(name) for name in raw.get("primary_key_columns") or () if name
             ],
-            "total": total if isinstance(total, int) else None,
+            "total": total,
+            "total_truncated": isinstance(raw_total, int) and raw_total > row_limit,
             "page": page,
             "size": size,
+            "row_limit": row_limit,
             "elapsed_ms": int(raw.get("elapsed_ms") or 0),
         }

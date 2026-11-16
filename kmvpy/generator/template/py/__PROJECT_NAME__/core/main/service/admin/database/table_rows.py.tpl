@@ -11,6 +11,9 @@
 
 WHERE / ORDER BY 文本在进入 Infra 之前已经变成受限 AST：Infra 只把 AST 映射成
 SQLAlchemy 表达式（绑定参数 + 反射列对象），不存在字符串拼接的 SQL。
+
+LIMIT 是结果窗口上限而不是分页替代：``row_limit`` 在访问数据库之前由 Hub 校验
+（超过 10000 直接 46014），Infra 据此换算每一页实际可读取的行数。
 """
 
 from kmvpy.common.exception.kmv_exception import KmvException
@@ -46,6 +49,7 @@ class AdminDatabaseTableRowsService:
         page, size = DatabaseTableRowsHub.normalized_page(req.page, req.size)
         # 表名与条件都在任何数据库交互之前校验：非法输入不会产生一次查询。
         table_name = DatabaseTableRowsHub.validated_table_name(req.table_name)
+        row_limit = DatabaseTableRowsHub.normalized_row_limit(req.row_limit)
         where_node = DatabaseTableRowsHub.parse_where(req.where_clause)
         order_terms = DatabaseTableRowsHub.parse_order_by_terms(
             req.order_by_clause
@@ -60,6 +64,7 @@ class AdminDatabaseTableRowsService:
                 order_desc=req.order_desc,
                 where_node=where_node,
                 order_terms=order_terms,
+                row_limit=row_limit,
             )
             DatabaseTableRowsHub.ensure_table_exists(raw)
             # 条件和排序列都必须在反射列名单内；非法列在这里转成 46012，
@@ -72,7 +77,9 @@ class AdminDatabaseTableRowsService:
                 DatabaseTableRowsHub.column_names(raw),
                 req.order_by,
             )
-            data = DatabaseTableRowsHub.build_result(raw, page=page, size=size)
+            data = DatabaseTableRowsHub.build_result(
+                raw, page=page, size=size, row_limit=row_limit
+            )
         except KmvException:
             raise
         except query_lang.UnknownColumnError as exc:
@@ -134,8 +141,10 @@ class AdminDatabaseTableRowsService:
                 str(name) for name in data["primary_key_columns"]
             ],
             total=data["total"],
+            total_truncated=bool(data["total_truncated"]),
             page=int(data["page"]),
             size=int(data["size"]),
+            row_limit=int(data["row_limit"]),
             elapsed_ms=int(data["elapsed_ms"]),
             where_clause=DatabaseTableRowsHub.normalized_clause(
                 req.where_clause

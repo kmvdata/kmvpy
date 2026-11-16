@@ -57,7 +57,7 @@ REST/realtime hybrid APIs, microservice foundations with unified config and erro
 
 For smoke tests, install `pip install -e ".[test]"`; for package development, install `pip install -e ".[test,dev]"`. Form or upload endpoints additionally require `pip install ".[multipart]"`.
 
-**Build:** `python -m pip install -U build twine && python -m build && python -m twine check --strict dist/*` → artifacts land in `dist/`; prefer the **wheel** for distribution/install. Offline install from `tar.gz` only, while avoiding build dependencies: `pip install --no-build-isolation --no-deps dist/kmvpy-0.2.3.tar.gz`.
+**Build:** `python -m pip install -U build twine && python -m build && python -m twine check --strict dist/*` → artifacts land in `dist/`; prefer the **wheel** for distribution/install. Offline install from `tar.gz` only, while avoiding build dependencies: `pip install --no-build-isolation --no-deps dist/kmvpy-0.2.4.tar.gz`.
 
 **Scaffold and ops commands:** `kmvpy create <name> [-d parent-dir]` · `kmvpy update …` · `kmvpy rotate-jwt-keys path/to/config.yaml`
 
@@ -117,12 +117,12 @@ python -m build
 python -m twine check --strict dist/*
 ```
 
-Artifacts (the version comes solely from `kmvpy/__init__.py`'s `__version__`; currently `0.2.3`; bump it before a new release):
+Artifacts (the version comes solely from `kmvpy/__init__.py`'s `__version__`; currently `0.2.4`; bump it before a new release):
 
 | Artifact | Description | Recommended Use |
 |------|------|----------|
-| `dist/kmvpy-0.2.3-py3-none-any.whl` | Pure Python library wheel; runtime dependencies determine platform support | **Preferred**: install, deliver, offline distribution |
-| `dist/kmvpy-0.2.3.tar.gz` | sdist source package | source audit, repackaging |
+| `dist/kmvpy-0.2.4-py3-none-any.whl` | Pure Python library wheel; runtime dependencies determine platform support | **Preferred**: install, deliver, offline distribution |
+| `dist/kmvpy-0.2.4.tar.gz` | sdist source package | source audit, repackaging |
 
 The wheel ships the scaffold templates and nginx templates (collected via `MANIFEST.in` + `include-package-data`), so after installation `kmvpy create / update` can generate or update projects directly without manually copying templates from the repository.
 
@@ -146,13 +146,13 @@ pip install -e ".[mysql]"
 Option C: install a built wheel (recommended for delivery / CI / offline distribution)
 
 ```bash
-pip install dist/kmvpy-0.2.3-py3-none-any.whl
+pip install dist/kmvpy-0.2.4-py3-none-any.whl
 ```
 
 Option D: offline install from sdist (when the environment already has all runtime dependencies and you want to skip pulling build dependencies; bypasses build isolation and dependency resolution)
 
 ```bash
-pip install --no-build-isolation --no-deps dist/kmvpy-0.2.3.tar.gz
+pip install --no-build-isolation --no-deps dist/kmvpy-0.2.4.tar.gz
 ```
 
 > Note: Option D's `--no-deps` will not auto-install any runtime dependencies; if the environment is missing dependencies, use Option A/C (or install the missing dependencies first).

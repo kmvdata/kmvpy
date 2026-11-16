@@ -57,7 +57,7 @@ REST/实时混合 API、统一配置与错误契约的微服务底座、需要�
 
 冒烟测试需安装 `pip install -e ".[test]"`；开发与打包校验使用 `pip install -e ".[test,dev]"`。表单或上传接口另外安装 `pip install ".[multipart]"`。
 
-**构建：** `python -m pip install -U build twine && python -m build && python -m twine check --strict dist/*` → 产物在 `dist/`；分发/安装优先 **wheel**。仅从 `tar.gz` 离线安装且避免拉取构建依赖时：`pip install --no-build-isolation --no-deps dist/kmvpy-0.2.3.tar.gz`。
+**构建：** `python -m pip install -U build twine && python -m build && python -m twine check --strict dist/*` → 产物在 `dist/`；分发/安装优先 **wheel**。仅从 `tar.gz` 离线安装且避免拉取构建依赖时：`pip install --no-build-isolation --no-deps dist/kmvpy-0.2.4.tar.gz`。
 
 **脚手架与运维命令：** `kmvpy create <名称> [-d 父目录]` · `kmvpy update …` · `kmvpy rotate-jwt-keys path/to/config.yaml`
 
@@ -117,12 +117,12 @@ python -m build
 python -m twine check --strict dist/*
 ```
 
-产物（版本号以 `kmvpy/__init__.py` 的 `__version__` 为唯一来源，当前 `0.2.3`；发新版前先递增）：
+产物（版本号以 `kmvpy/__init__.py` 的 `__version__` 为唯一来源，当前 `0.2.4`；发新版前先递增）：
 
 | 产物 | 说明 | 建议用途 |
 |------|------|----------|
-| `dist/kmvpy-0.2.3-py3-none-any.whl` | 纯 Python 库 wheel；运行平台受依赖支持范围约束 | **首选**：安装、交付、离线分发 |
-| `dist/kmvpy-0.2.3.tar.gz` | sdist 源码包 | 审计源码、二次打包 |
+| `dist/kmvpy-0.2.4-py3-none-any.whl` | 纯 Python 库 wheel；运行平台受依赖支持范围约束 | **首选**：安装、交付、离线分发 |
+| `dist/kmvpy-0.2.4.tar.gz` | sdist 源码包 | 审计源码、二次打包 |
 
 wheel 已随包携带脚手架模板与 nginx 模板（由 `MANIFEST.in` + `include-package-data` 收集），因此安装后 `kmvpy create / update` 即可直接生成或更新工程，无需再从仓库手动拷贝模板。
 
@@ -146,13 +146,13 @@ pip install -e ".[mysql]"
 方式 C：安装已构建的 wheel（交付 / CI / 离线分发推荐）
 
 ```bash
-pip install dist/kmvpy-0.2.3-py3-none-any.whl
+pip install dist/kmvpy-0.2.4-py3-none-any.whl
 ```
 
 方式 D：从 sdist 离线安装（环境已具备全部运行依赖、又不想拉取构建依赖时，跳过构建隔离与依赖解析）
 
 ```bash
-pip install --no-build-isolation --no-deps dist/kmvpy-0.2.3.tar.gz
+pip install --no-build-isolation --no-deps dist/kmvpy-0.2.4.tar.gz
 ```
 
 > 注意：方式 D 的 `--no-deps` 不会自动安装任何运行依赖；若环境缺依赖，请改用方式 A/C（或先补齐依赖）。

@@ -24,7 +24,7 @@ python -m pip install kmvpy
 | 作者/维护者 | `kermit.mei` |
 | 公开邮箱 | `kermit.mei@gmail.com` |
 | 计划中的 GitHub 仓库 | `kmvdata/kmvpy` |
-| 当前版本 | `0.2.1` |
+| 当前版本 | `0.2.4` |
 
 首发完成前，README 中的 `pip install kmvpy` 只能视为目标命令；本地验证请使用 `pip install .` 或安装构建出的 wheel。
 
@@ -120,7 +120,7 @@ python -m twine check --strict dist/*
 发布前逐项确认：
 
 - `python -m pytest` 没有失败。
-- 构建产物名是 `kmvpy-0.2.1-py3-none-any.whl` 和 `kmvpy-0.2.1.tar.gz`。
+- 构建产物名是 `kmvpy-0.2.4-py3-none-any.whl` 和 `kmvpy-0.2.4.tar.gz`。
 - `python -m twine check --strict dist/*` 通过。
 - 在新虚拟环境安装 wheel 后，`import kmvpy` 和 `kmvpy --help` 都能工作。
 - 改名前的旧名称不再作为导入包或命令出现。
@@ -132,10 +132,10 @@ python -m twine check --strict dist/*
 
 `.github/workflows/publish.yml` 只在 GitHub Release 被正式发布时运行。它会检查版本、构建 wheel 与源码包、校验元数据、检查安装内容，并通过 `pypi` 环境发布到正式 PyPI。
 
-假设 `kmvpy/__init__.py` 中的版本为 `0.2.1`：
+假设 `kmvpy/__init__.py` 中的版本为 `0.2.4`：
 
 1. 在 GitHub 打开 **Releases → Draft a new release**。
-2. 创建标签 `v0.2.1`。标签可以带一个 `v` 前缀，其余部分必须与包版本完全一致。
+2. 创建标签 `v0.2.4`。标签可以带一个 `v` 前缀，其余部分必须与包版本完全一致。
 3. 填写变更说明，选择 **Publish release**。
 4. 打开 **Actions → Publish kmvpy to PyPI** 查看构建过程。
 5. 构建通过后，在 `pypi` 环境批准发布。
@@ -154,20 +154,20 @@ python -m twine check --strict dist/*
 
 ```bash
 python -m venv /tmp/kmvpy-pypi-check
-/tmp/kmvpy-pypi-check/bin/python -m pip install --no-cache-dir kmvpy==0.2.1
+/tmp/kmvpy-pypi-check/bin/python -m pip install --no-cache-dir kmvpy==0.2.4
 cd /tmp
 /tmp/kmvpy-pypi-check/bin/python -c "import kmvpy; print(kmvpy.__version__)"
 /tmp/kmvpy-pypi-check/bin/kmvpy --help
 ```
 
-确认版本输出为 `0.2.1`，命令名为 `kmvpy`，PyPI 项目链接指向 `https://github.com/kmvdata/kmvpy`。此时普通用户就可以正式使用 `pip install kmvpy`。
+确认版本输出为 `0.2.4`，命令名为 `kmvpy`，PyPI 项目链接指向 `https://github.com/kmvdata/kmvpy`。此时普通用户就可以正式使用 `pip install kmvpy`。
 
 ## 8. 后续版本固定流程
 
 1. 修改 `kmvpy/__init__.py` 中的版本号。
 2. 更新变更说明和文档，运行测试、构建和严格校验。
 3. 提交并推送代码。
-4. 创建与版本一致的 GitHub Release，例如 `v0.2.2`。
+4. 创建与版本一致的 GitHub Release，例如 `v0.2.5`。
 5. 审核并批准 `pypi` 环境发布。
 6. 在全新环境中从 PyPI 安装验证。
 

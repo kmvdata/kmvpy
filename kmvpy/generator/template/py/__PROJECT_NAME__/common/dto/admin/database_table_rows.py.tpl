@@ -1,8 +1,8 @@
 # coding: utf-8
 """管理端数据表行数据 DTO。
 
-只表达只读分页浏览所需的最小契约：分页参数、受限的 WHERE / ORDER BY 文本条件、
-单元格归一化结构、列元数据与总数。
+只表达只读分页浏览所需的最小契约：分页参数、LIMIT 窗口上限、受限的
+WHERE / ORDER BY 文本条件、单元格归一化结构、列元数据与总数。
 
 ``where_clause`` / ``order_by_clause`` 是**受限查询语言**文本，不是原生 SQL：
 语法白名单、列白名单与参数绑定都在 ``common/infra/database/query_lang.py`` 与
@@ -17,6 +17,13 @@ from pydantic import BaseModel, Field
 # 管理端只做人工浏览，100000 页已远超实际需要，超限直接按参数非法拒绝。
 MAX_PAGE = 100000
 
+# 默认 LIMIT：进入数据视图只取前 100 行，避免默认动作就触发全量读取。
+DEFAULT_ROW_LIMIT = 100
+
+# LIMIT 上限：超过该值不静默收敛，而是按数据安全拒绝（46014）。
+# 静默裁剪会让调用方误以为拿到的是完整结果窗口，因此必须明确失败。
+MAX_ROW_LIMIT = 10000
+
 
 class AdminDatabaseTableRowsReq(BaseModel):
     """行数据请求：只接受表名、分页与排序列，连接恒为配置声明的数据库。"""
@@ -29,6 +36,14 @@ class AdminDatabaseTableRowsReq(BaseModel):
         description="页码，从 1 开始；上限 100000，避免超深 OFFSET 消耗数据库资源",
     )
     size: int = Field(default=50, ge=1, le=200, description="每页行数上限 200")
+    row_limit: int = Field(
+        default=DEFAULT_ROW_LIMIT,
+        ge=1,
+        description=(
+            "本次查询最多返回的行数上限（LIMIT），默认 100、最小 1、上限 10000；"
+            "超过 10000 按数据安全拒绝（46014），不做静默收敛"
+        ),
+    )
     order_by: Optional[str] = Field(
         default=None,
         max_length=128,
@@ -86,10 +101,18 @@ class AdminDatabaseTableRowsRes(BaseModel):
     primary_key_columns: list[str] = Field(description="主键列名，可为空")
     total: Optional[int] = Field(
         default=None,
-        description="总行数；仅在请求第一页时读取，其余页为 null",
+        description=(
+            "总行数；仅在请求第一页时读取，其余页为 null。"
+            "已按 row_limit 收敛，因此不会超过本次生效的行数上限"
+        ),
+    )
+    total_truncated: bool = Field(
+        default=False,
+        description="总行数是否已被 row_limit 截断；为 true 表示实际行数更多",
     )
     page: int = Field(description="当前页码")
     size: int = Field(description="当前每页行数")
+    row_limit: int = Field(description="本次生效的行数上限")
     elapsed_ms: int = Field(description="服务端读取耗时（毫秒）")
     where_clause: Optional[str] = Field(
         default=None,

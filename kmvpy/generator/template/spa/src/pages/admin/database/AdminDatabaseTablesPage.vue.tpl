@@ -262,7 +262,6 @@
           v-else-if="detailTable && currentView === 'data'"
           :table-name="detailTable.table_name"
           :columns="detailTable.columns"
-          :indexes="detailTable.indexes"
         />
         <div v-else-if="!loading" class="admin-database-tables__detail-missing">
           {{ t("adminDatabaseTables.detail.tableMissing") }}
