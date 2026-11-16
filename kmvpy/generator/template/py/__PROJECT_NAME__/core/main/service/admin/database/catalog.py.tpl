@@ -9,7 +9,7 @@ from __PROJECT_NAME__.common.dto.admin.database_catalog import (
     AdminDatabaseCatalogTablesRes,
     AdminDatabaseServerRes,
 )
-from __PROJECT_NAME__.core.main.hub.database_catalog import DatabaseCatalogHub
+from __PROJECT_NAME__.core.main.hub.database.catalog import DatabaseCatalogHub
 
 
 class AdminDatabaseCatalogService:

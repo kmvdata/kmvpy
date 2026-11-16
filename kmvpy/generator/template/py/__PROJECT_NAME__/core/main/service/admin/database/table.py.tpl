@@ -28,7 +28,7 @@ from __PROJECT_NAME__.common.infra.orm import (
     inspect_database_tables,
     registered_orm_models,
 )
-from __PROJECT_NAME__.core.main.hub.database_catalog import DatabaseCatalogHub
+from __PROJECT_NAME__.core.main.hub.database.catalog import DatabaseCatalogHub
 
 
 class AdminDatabaseTableService:

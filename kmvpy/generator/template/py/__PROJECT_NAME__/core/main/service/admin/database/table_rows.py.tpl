@@ -34,8 +34,8 @@ from __PROJECT_NAME__.common.dto.admin.database_table_rows import (
 from __PROJECT_NAME__.common.exception import database_table_errors as database_table_exc
 from __PROJECT_NAME__.common.infra.database import query_lang
 from __PROJECT_NAME__.common.infra.database.rows import read_table_rows
-from __PROJECT_NAME__.core.main.hub.database_catalog import DatabaseCatalogHub
-from __PROJECT_NAME__.core.main.hub.database_table_rows import DatabaseTableRowsHub
+from __PROJECT_NAME__.core.main.hub.database.catalog import DatabaseCatalogHub
+from __PROJECT_NAME__.core.main.hub.database.table_rows import DatabaseTableRowsHub
 
 
 class AdminDatabaseTableRowsService:

@@ -32,8 +32,8 @@ from __PROJECT_NAME__.common.dto.admin.database_table_schema import (
     AdminDatabaseTableSchemaStatementRes,
 )
 from __PROJECT_NAME__.common.exception import database_table_errors as database_table_exc
-from __PROJECT_NAME__.core.main.hub.database_table_schema import DatabaseTableSchemaHub
-from __PROJECT_NAME__.core.main.hub.database_catalog import DatabaseCatalogHub
+from __PROJECT_NAME__.core.main.hub.database.table_schema import DatabaseTableSchemaHub
+from __PROJECT_NAME__.core.main.hub.database.catalog import DatabaseCatalogHub
 
 
 class AdminDatabaseTableSchemaService:

@@ -16,7 +16,7 @@ from kmvpy.common.exception.kmv_exception import KmvException
 
 from __PROJECT_NAME__.common.exception import database_table_errors as database_table_exc
 from __PROJECT_NAME__.common.infra.database.rows import page_limit
-from __PROJECT_NAME__.core.main.hub.database_table_rows import DatabaseTableRowsHub
+from __PROJECT_NAME__.core.main.hub.database.table_rows import DatabaseTableRowsHub
 
 
 class RowLimitNormalizationTest(unittest.TestCase):

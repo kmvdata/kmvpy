@@ -14,7 +14,7 @@ import unittest
 from kmvpy.common.exception.kmv_exception import KmvException
 
 from __PROJECT_NAME__.common.infra.orm import schema_spec
-from __PROJECT_NAME__.core.main.hub.database_table_schema import (
+from __PROJECT_NAME__.core.main.hub.database.table_schema import (
     LEVEL_BLOCKING,
     LEVEL_CONFIRM,
     MODE_AUTO,
