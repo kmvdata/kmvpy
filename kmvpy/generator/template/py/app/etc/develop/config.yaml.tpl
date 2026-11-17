@@ -42,7 +42,7 @@ auth_config:
       port: 6379
       db: 1
       username: null
-      password: cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
+      password: password_by_kmvdata.com
       decode_responses: true
   admin:
     jwt:
@@ -64,14 +64,14 @@ auth_config:
       port: 6379
       db: 10
       username: null
-      password: cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
+      password: password_by_kmvdata.com
       decode_responses: true
 default_admin:
   username: admin
-  password: Abc123456
+  password: password_by_kmvdata.com
 default_storage:
   database:
-    url: postgresql+asyncpg://kmvuser:www.kmvdata.com@localhost:5432/kmvdata
+    url: postgresql+asyncpg://kmvuser:password_by_kmvdata.com@localhost:5432/kmvdata
     pool_size: 10
     max_overflow: 5
     pool_recycle: 3600
@@ -85,5 +85,5 @@ default_storage:
     port: 6379
     db: 0
     username: null
-    password: cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
+    password: password_by_kmvdata.com
     decode_responses: true

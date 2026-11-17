@@ -10,7 +10,7 @@ services:
     mem_limit: 1536m
     environment:
       POSTGRES_USER: dbuser
-      POSTGRES_PASSWORD: 3PVtuInMCcYwOa9Xye7akWQr0RTfTFp3
+      POSTGRES_PASSWORD: password_by_kmvdata.com
       POSTGRES_DB: __PROJECT_NAME__
       TZ: Asia/Shanghai
     volumes:
@@ -32,7 +32,7 @@ services:
     mem_limit: 1024m
     command:
       - redis-server
-      - --requirepass cgd3nf4fs1PnYfKDgA3gCxk47zFNT9L5
+      - --requirepass password_by_kmvdata.com
       - --maxmemory 800mb
       - --maxmemory-policy allkeys-lru
       - --appendonly yes
