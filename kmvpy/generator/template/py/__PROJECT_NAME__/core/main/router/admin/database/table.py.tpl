@@ -1,0 +1,83 @@
+# coding: utf-8
+"""管理端数据库表维护 HTTP 接口。"""
+
+from fastapi import APIRouter, Depends
+
+from kmvpy.common.response import ApiResponse
+from kmvpy.common.tool.logger import api_log
+from kmvpy.core.main.service.jwt_service import JwtUserInfo
+
+from __PROJECT_NAME__.common.dependencies.admin_op_log import admin_op_log
+from __PROJECT_NAME__.common.dependencies.auth import auth_admin
+from __PROJECT_NAME__.common.dto.admin.database_table import (
+    AdminDatabaseTableActionReq,
+    AdminDatabaseTablesListReq,
+)
+from __PROJECT_NAME__.common.dto.admin.database_table_rows import AdminDatabaseTableRowsReq
+from __PROJECT_NAME__.core.main.service.admin.database.table import (
+    AdminDatabaseTableService,
+)
+from __PROJECT_NAME__.core.main.service.admin.database.table_rows import (
+    AdminDatabaseTableRowsService,
+)
+
+router = APIRouter(
+    prefix="/api/admin/database_table",
+    tags=["admin_database_table"],
+)
+
+
+@router.post(
+    path="/list",
+    summary="数据库表列表",
+    description="查看配置文件指定数据库的全部表结构；不接受任何连接参数。",
+    tags=["admin_database_table"],
+)
+@api_log
+async def api_admin_database_table_list(
+    req: AdminDatabaseTablesListReq,
+    _admin_user: JwtUserInfo = Depends(auth_admin),
+):
+    _ = req
+    return ApiResponse.success_response(
+        data=await AdminDatabaseTableService.list_tables()
+    )
+
+
+@router.post(
+    path="/drop",
+    summary="删除数据库表",
+    description="删除配置库中的指定数据表。需管理员登录态并提供完全一致的确认表名。",
+    tags=["admin_database_table"],
+)
+@api_log
+@admin_op_log
+async def api_admin_database_table_drop(
+    req: AdminDatabaseTableActionReq,
+    admin_user: JwtUserInfo = Depends(auth_admin),
+):
+    _ = admin_user
+    return ApiResponse.success_response(
+        data=await AdminDatabaseTableService.drop_table(req)
+    )
+
+
+@router.post(
+    path="/rows",
+    summary="数据表行数据",
+    description=(
+        "只读分页读取配置库中指定数据表的行数据；"
+        "不接受任何连接参数，不执行任何写操作。"
+        "row_limit 限制本次查询最多返回的行数（默认 100、范围 1-10000），"
+        "超过 10000 按数据安全拒绝。"
+    ),
+    tags=["admin_database_table"],
+)
+@api_log
+async def api_admin_database_table_rows(
+    req: AdminDatabaseTableRowsReq,
+    _admin_user: JwtUserInfo = Depends(auth_admin),
+):
+    return ApiResponse.success_response(
+        data=await AdminDatabaseTableRowsService.list_rows(req)
+    )
