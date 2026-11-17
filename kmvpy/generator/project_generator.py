@@ -4,9 +4,17 @@ import re
 import shutil
 import stat
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from kmvpy.generator.gitignore_matcher import GitignoreMatcher
+from kmvpy.generator.secret_redactor import (
+    SECRET_PLACEHOLDER,
+    RedactionItem,
+    redact_secrets,
+    should_redact_template_file,
+    validate_secret_placeholder,
+)
 
 PROJECT_NAME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 TEMPLATE_DIR = Path(__file__).with_name("template")
@@ -266,16 +274,74 @@ def _maybe_upgrade_existing_release_deploy_sh(
     return True
 
 
+@dataclass(frozen=True)
+class FileRedaction:
+    """单个模板文件的脱敏结果。"""
+
+    source_path: Path
+    template_path: Path
+    template_relative: str
+    items: tuple[RedactionItem, ...]
+
+
+@dataclass(frozen=True)
+class GentplReport:
+    """``kmvpy gentpl`` 的结构化结果，供 CLI 汇总与测试断言。"""
+
+    template_root: Path
+    redactions: tuple[FileRedaction, ...] = ()
+    warnings: tuple[str, ...] = ()
+    dry_run: bool = False
+
+    @property
+    def file_count(self) -> int:
+        return len(self.redactions)
+
+    @property
+    def item_count(self) -> int:
+        return sum(len(redaction.items) for redaction in self.redactions)
+
+
 def generate_template_from_project(
     project_spec: str,
     base_directory: str | Path | None = None,
     template_parent_directory: str | Path | None = None,
+    *,
+    secret_redaction: bool = True,
+    secret_placeholder: str = SECRET_PLACEHOLDER,
+    dry_run: bool = False,
 ) -> Path:
-    """将已生成工程反向同步回 ``template/`` 目录。
+    """将已生成工程反向同步回 ``template/`` 目录，返回模板根目录。
+
+    导出时会把 ``config.yaml`` / ``docker-compose.yaml`` 中的密码与密钥替换为
+    ``password_by_kmvdata.com``；连接串中的数据库密码只替换密码段并保留用户名。
+    需要脱敏明细时改用 :func:`export_template_from_project`。
+    """
+    return export_template_from_project(
+        project_spec,
+        base_directory=base_directory,
+        template_parent_directory=template_parent_directory,
+        secret_redaction=secret_redaction,
+        secret_placeholder=secret_placeholder,
+        dry_run=dry_run,
+    ).template_root
+
+
+def export_template_from_project(
+    project_spec: str,
+    base_directory: str | Path | None = None,
+    template_parent_directory: str | Path | None = None,
+    *,
+    secret_redaction: bool = True,
+    secret_placeholder: str = SECRET_PLACEHOLDER,
+    dry_run: bool = False,
+) -> GentplReport:
+    """将已生成工程反向同步回 ``template/``，并返回脱敏明细。
 
     该命令用于维护 generator 自身的模板：它会把工程名相关内容恢复为占位符，
     但不会删除模板中已有而工程中不存在的文件。模板目录固定生成到
     ``template_parent_directory/template``，未指定时使用当前工作目录。
+    ``dry_run=True`` 时只计算结果，不创建目录、不清理旧目录、不写文件。
     """
     project_root, normalized_name = resolve_project_root_and_name(
         project_spec, base_directory
@@ -285,8 +351,17 @@ def generate_template_from_project(
         raise FileNotFoundError(f"工程目录不存在: {project_root}")
     if not project_root.is_dir():
         raise NotADirectoryError(f"工程路径不是目录: {project_root}")
+    placeholder = (
+        validate_secret_placeholder(secret_placeholder)
+        if secret_redaction
+        else SECRET_PLACEHOLDER
+    )
 
-    _remove_legacy_py_template_root(template_root)
+    if not dry_run:
+        _remove_legacy_py_template_root(template_root)
+
+    redactions: list[FileRedaction] = []
+    warnings: list[str] = []
 
     for source_path in _iter_project_files_for_template(project_root):
         project_rel = source_path.relative_to(project_root).as_posix()
@@ -294,7 +369,6 @@ def generate_template_from_project(
             project_rel, normalized_name
         )
         dest = template_root / template_rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
 
         if _is_binary_template_file(dest):
             try:
@@ -303,36 +377,64 @@ def generate_template_from_project(
                 raise GentplFileError(
                     "读取二进制工程文件", source_path, dest, exc
                 ) from exc
-            try:
-                dest.write_bytes(content)
-            except OSError as exc:
-                raise GentplFileError(
-                    "写入二进制模板文件", source_path, dest, exc
-                ) from exc
-        else:
-            try:
-                text = source_path.read_text(encoding="utf-8")
-            except UnicodeDecodeError as exc:
-                raise GentplFileError(
-                    "读取 UTF-8 文本工程文件", source_path, dest, exc
-                ) from exc
-            except OSError as exc:
-                raise GentplFileError(
-                    "读取文本工程文件", source_path, dest, exc
-                ) from exc
-            try:
-                dest.write_text(
-                    _apply_reverse_template_replacements(
-                        text, normalized_name, template_rel
-                    ),
-                    encoding="utf-8",
-                )
-            except OSError as exc:
-                raise GentplFileError(
-                    "写入文本模板文件", source_path, dest, exc
-                ) from exc
+            if not dry_run:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    dest.write_bytes(content)
+                except OSError as exc:
+                    raise GentplFileError(
+                        "写入二进制模板文件", source_path, dest, exc
+                    ) from exc
+            continue
 
-    return template_root
+        try:
+            text = source_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise GentplFileError(
+                "读取 UTF-8 文本工程文件", source_path, dest, exc
+            ) from exc
+        except OSError as exc:
+            raise GentplFileError(
+                "读取文本工程文件", source_path, dest, exc
+            ) from exc
+
+        # 先做工程名反向替换，再脱敏，避免占位符被后续替换规则改写。
+        rendered = _apply_reverse_template_replacements(
+            text, normalized_name, template_rel
+        )
+        if secret_redaction and should_redact_template_file(project_rel):
+            redaction = redact_secrets(rendered, placeholder=placeholder)
+            rendered = redaction.text
+            warnings.extend(
+                f"{project_rel}: {warning}" for warning in redaction.warnings
+            )
+            if redaction.items:
+                redactions.append(
+                    FileRedaction(
+                        source_path=source_path,
+                        template_path=dest,
+                        template_relative=template_rel,
+                        items=redaction.items,
+                    )
+                )
+
+        if dry_run:
+            continue
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            dest.write_text(rendered, encoding="utf-8")
+        except OSError as exc:
+            raise GentplFileError(
+                "写入文本模板文件", source_path, dest, exc
+            ) from exc
+
+    return GentplReport(
+        template_root=template_root,
+        redactions=tuple(redactions),
+        warnings=tuple(warnings),
+        dry_run=dry_run,
+    )
 
 
 def _resolve_generated_template_root(

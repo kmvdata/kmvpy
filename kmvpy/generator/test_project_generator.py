@@ -10,16 +10,23 @@ from pathlib import Path
 
 import pytest
 
-from kmvpy.generator.cli import handle_gentpl, handle_nginx, handle_update
+from kmvpy.generator.cli import (
+    build_parser,
+    handle_gentpl,
+    handle_nginx,
+    handle_update,
+)
 from kmvpy.generator.project_generator import (
     GentplFileError,
     create_project,
+    export_template_from_project,
     generate_template_from_project,
     project_relative_path_to_template_path,
     resolve_project_root_and_name,
     template_relative_path_to_project_path,
     update_project,
 )
+from kmvpy.generator.secret_redactor import SECRET_PLACEHOLDER
 
 
 def test_create_project_generates_expected_layout(tmp_path: Path) -> None:

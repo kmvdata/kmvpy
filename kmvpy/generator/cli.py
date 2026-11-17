@@ -5,10 +5,12 @@ from pathlib import Path
 
 from kmvpy.generator.jwt_key_rotation import rotate_jwt_keys
 from kmvpy.generator.project_generator import (
+    GentplReport,
     create_project,
-    generate_template_from_project,
+    export_template_from_project,
     update_project,
 )
+from kmvpy.generator.secret_redactor import SECRET_PLACEHOLDER
 
 NGINX_TEMPLATE_DIR = Path(__file__).with_name("nginx")
 NGINX_TEMPLATE_FILES = {
@@ -72,13 +74,37 @@ def build_parser() -> argparse.ArgumentParser:
     )
     gentpl_parser.add_argument(
         "-d",
+        "-o",
         "--directory",
+        "--output",
+        dest="directory",
         type=Path,
         default=Path.cwd(),
         help=(
             "模板输出父目录，模板会写入此目录下的 template/；"
             "默认为当前目录，不影响工程路径解析。"
         ),
+    )
+    gentpl_parser.add_argument(
+        "--secret-placeholder",
+        default=SECRET_PLACEHOLDER,
+        help=(
+            "导出模板时替换密码与密钥的占位符；"
+            f"默认为 {SECRET_PLACEHOLDER}。"
+        ),
+    )
+    gentpl_parser.add_argument(
+        "--no-secret-redaction",
+        action="store_true",
+        help=(
+            "关闭密码/密钥脱敏，模板将保留工程中的明文凭据；"
+            "仅在确有必要时使用。"
+        ),
+    )
+    gentpl_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="只统计将被脱敏的字段，不写任何模板文件。",
     )
     nginx_parser = subparsers.add_parser("nginx", help="输出 nginx 配置模板")
     nginx_parser.add_argument(
@@ -134,14 +160,40 @@ def handle_update(args: argparse.Namespace) -> int:
 
 def handle_gentpl(args: argparse.Namespace) -> int:
     project_spec = args.name or prompt_project_name()
-    template_root = generate_template_from_project(
+    report = export_template_from_project(
         project_spec,
         template_parent_directory=args.directory,
+        secret_redaction=not getattr(args, "no_secret_redaction", False),
+        secret_placeholder=getattr(
+            args, "secret_placeholder", SECRET_PLACEHOLDER
+        ),
+        dry_run=getattr(args, "dry_run", False),
     )
 
-    print(f"模板已生成: {template_root}。")
+    _print_gentpl_report(report)
     return 0
 
+
+def _print_gentpl_report(report: GentplReport) -> None:
+    prefix = "模板预演（未写盘）" if report.dry_run else "模板已生成"
+    print(f"{prefix}: {report.template_root}。")
+    if report.file_count:
+        print(
+            f"密码/密钥脱敏: {report.file_count} 个文件，"
+            f"{report.item_count} 处字段已替换。"
+        )
+        for redaction in report.redactions:
+            summary: dict[str, list[int]] = {}
+            for item in redaction.items:
+                summary.setdefault(item.key, []).append(item.line)
+            print(f"- {redaction.template_relative}")
+            for key, lines in summary.items():
+                joined = ", ".join(str(line) for line in lines)
+                print(f"  - {key} ×{len(lines)}（第 {joined} 行）")
+    else:
+        print("密码/密钥脱敏: 未命中 config.yaml 或 docker-compose.yaml。")
+    for warning in report.warnings:
+        print(f"警告: {warning}")
 
 def handle_nginx(args: argparse.Namespace) -> int:
     template_path = NGINX_TEMPLATE_DIR / NGINX_TEMPLATE_FILES[args.target]

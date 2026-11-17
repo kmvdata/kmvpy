@@ -71,8 +71,8 @@ kmvpy gentpl demo_project -d /tmp
 ```
 
 该命令会读取当前目录下的 `demo_project` 工程，并写入 `/tmp/template`。
-`-d` 只指定模板输出父目录，不参与工程路径解析。不指定 `-d` 时，会读取当前目录下的
-`demo_project`，并写入当前目录下的 `template/`。
+`-d` / `-o`（`--directory` / `--output`）只指定模板输出父目录，不参与工程路径解析。
+不指定时，会读取当前目录下的 `demo_project`，并写入当前目录下的 `template/`。
 
 如果第一个参数是相对路径或完整路径，例如 `../work/demo_project` 或
 `/tmp/demo_project`，则直接读取该工程路径，并取最后一级目录名 `demo_project`
@@ -83,6 +83,33 @@ kmvpy gentpl demo_project -d /tmp
 `demo_project`、`demo_project_py`、`demo_project_spa`、`DEMO_PROJECT_CONFIG_PATH`
 会分别回写为 `__PROJECT_NAME__`、`__PY_PROJECT_NAME__`、`__SPA_PROJECT_NAME__`、
 `__CONFIG_ENV_VAR__`。二进制资源会按字节同步。
+
+### 密码与密钥脱敏
+
+调试工程里通常已经填入了真实的数据库、Redis 和默认管理员凭据。`gentpl` 在写模板前会
+检查工程内所有 `config.yaml` / `config.yml` / `docker-compose.yaml` /
+`docker-compose.yml` / `compose.yaml` / `compose.yml`，把它们统一替换为
+`password_by_kmvdata.com`（与键名无关，只按文件名命中）：
+
+| 规则 | 示例 |
+| --- | --- |
+| YAML 键值 | `password: <原值>` → `password: password_by_kmvdata.com` |
+| URL userinfo（数据库密码） | `postgresql+asyncpg://kmvuser:<原值>@localhost:5432/kmvdata` → `postgresql+asyncpg://kmvuser:password_by_kmvdata.com@localhost:5432/kmvdata` |
+| Compose 映射 / 环境赋值 | `POSTGRES_PASSWORD: <原值>`、`- POSTGRES_PASSWORD=<原值>` |
+| 命令行旗标 | `- --requirepass <原值>`、`--requirepass=<原值>`、`--masterauth <原值>` |
+
+只替换值，不改动 `username` / `POSTGRES_USER` / `host` / `port` / `db` / `active_kid` /
+`private_key_path` 等键，也保留引号风格、行尾注释和 CRLF 换行；已经是占位符的值不会
+被二次改写，因此重复执行 `gentpl` 的输出字节稳定。凭据位于注释行、`.env` 文件、Markdown
+文档或 YAML 块标量（`key: |`）时不在覆盖范围，块标量会在输出中给出警告。
+
+```bash
+kmvpy gentpl demo_project --dry-run              # 只统计将被脱敏的字段，不写盘
+kmvpy gentpl demo_project -o /tmp --secret-placeholder CHANGE_ME
+kmvpy gentpl demo_project --no-secret-redaction # 明确关闭，模板保留明文凭据
+```
+
+命令结束时按文件列出被替换的键名、次数与行号，绝不打印原始密码值。
 
 为避免把运行时产物写回模板，`gentpl` 会先递归读取工程内各层 `.gitignore`，
 并按 Git 的目录作用域和规则优先级跳过被忽略的文件；同时会叠加以下内置规则：
