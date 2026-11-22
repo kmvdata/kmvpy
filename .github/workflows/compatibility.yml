@@ -1,0 +1,68 @@
+name: Python dependency compatibility
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python: "3.11"}
+          - {os: ubuntu-latest, python: "3.12"}
+          - {os: ubuntu-latest, python: "3.13"}
+          - {os: ubuntu-latest, python: "3.14"}
+          - {os: ubuntu-latest, python: "3.15"}
+          - {os: windows-latest, python: "3.11"}
+          - {os: windows-latest, python: "3.15"}
+          - {os: macos-15, python: "3.13"}
+          - {os: macos-15-intel, python: "3.13"}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install declared runtime and test dependencies
+        run: python -m pip install ".[mysql,multipart,test]"
+      - name: Check dependency resolution
+        run: python -m pip check
+      - name: Run runtime and generator regressions
+        run: python -m pytest kmvpy -q
+      - name: Install a generated project's test extra in a fresh environment
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.11'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import tempfile
+          import venv
+          from kmvpy.generator.project_generator import create_project
+
+          repository = Path.cwd()
+          scratch = Path(tempfile.mkdtemp(prefix="kmvpy-install-"))
+          project = create_project("dependency_probe", scratch)
+          environment = scratch / "venv"
+          venv.create(environment, with_pip=True)
+          python = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+          # Resolve the current checkout together with the generated project,
+          # rather than accidentally testing an older published kmvpy release.
+          subprocess.run([str(python), "-m", "pip", "install", str(repository),
+                          str(project / "dependency_probe_py") + "[test]"], check=True)
+          subprocess.run([str(python), "-m", "pip", "check"], check=True)
+          subprocess.run([str(python), "-c",
+                          "import dependency_probe.core.main; import aiomysql, pytest; "
+                          "from kmvpy.common.st import StBasePyTest"], cwd=scratch, check=True)
+          PY

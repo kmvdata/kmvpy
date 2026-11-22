@@ -1,0 +1,20 @@
+# 参考网址 https://docs.python.org/2/distutils/sourcedist.html#the-manifest-in-template
+
+# include all files matching any of the listed patterns
+include README.md
+include LICENSE
+recursive-include assets *.svg
+recursive-include kmvpy/generator/template *
+recursive-include kmvpy/generator/nginx *
+
+# exclude all files matching any of the listed patterns
+exclude MANIFEST.in Dockerfile
+
+#recursive-include tests *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+
+# exclude all files under dir
+prune docs
+prune venv
+prune datadict

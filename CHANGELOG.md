@@ -1,0 +1,46 @@
+# 更新日志
+
+## 0.2.6
+
+- 仓库历史重建：以当前代码状态作为新的首个提交，旧提交（其中误含密码）不再属于本仓库历史；`main` 与 `develop` 统一指向该提交，旧标签 `v0.2.2`/`v0.2.3` 移除，仅保留 `v0.2.6`。
+- 新增 `kmvpy/generator/secret_redactor.py`：`kmvpy create` / `update` 在生成或回写模板时自动脱敏 YAML 键值、URL userinfo、Compose 环境变量与命令行旗标中的密码，统一替换为 `password_by_kmvdata.com`。
+- 版本号递增至 `0.2.6`，README、README.zh-CN 与发布文档同步为新版本号与产物名。
+- 修复仓库重建后 CI 失败：`.gitignore` 的 `.vscode/` 规则会忽略 `kmvpy/generator/template/.vscode/`，导致模板资源未随仓库发布、`kmvpy create` 不再生成 `.vscode/settings.json` 与 `launch.json`；现已为该模板目录增加忽略例外。
+- 生成器模板与框架契约对齐：生成工程的 `pyproject.toml` 改为 `setuptools>=77.0.3` 与 `kmvpy[mysql]>=0.2.4,<0.3`（仅保留 `test` extra）；`deploy.sh` 安装 `kmvpy[mysql]==${KMVPY_VERSION}` 并固定 `0.2.6`；入口模板改用 `init_asgi_app(config, routers, storage=DefaultStorage.instance(config))` 且先进入框架 lifespan 再建表，不再改写 `engineio_path`；Socket 服务改用公开的 `server` 对象并支持 Redis ACL 用户名、`protocol=2` 与用户名/密码的 URL 编码。
+- `DefaultStorage` 不再在构造期隐式建连，`instance()` 可接收显式配置并在首次调用时缓存单例。
+- 移除运维文档模板中内嵌的真实 Redis/PostgreSQL 密码，改为指向 `docker-compose.yaml`；同步清理单元测试中的历史凭据常量。
+
+## 0.2.4
+
+- 生成工程的依赖契约收敛：`pyproject.toml` 只声明 `kmvpy[mysql]>=0.2.4,<0.3` 与 `test` extra `kmvpy[test]>=0.2.4,<0.3`，不再重复声明 `cryptography`、`SQLAlchemy`、`aiomysql`，旧的项目级 `mysql`/`postgresql`/`sqlite`/`all` extras 一并移除；构建系统统一为 `setuptools>=77.0.3`。
+- 远程 `deploy.sh` 改为安装 `kmvpy[mysql]==${KMVPY_VERSION}`，发布时自动带入异步 MySQL 驱动，安装后仍校验实际 `kmvpy` 版本；`biu` 构建依赖缺失提示改为 `build setuptools wheel`。
+- 新增管理端数据库浏览模板：`database_catalog`、`database_table`、`database_table_schema`、`database_table_rows` DTO 与对应 Hub、错误码，支持表结构、表数据与库目录查询。
+- ORM 与 DDL 模板继续完善 MySQL 列级 diff、`ALTER`/`MODIFY COLUMN` 渲染与索引同步，并把 PostgreSQL 默认值 `::type` 转换归一化后再比较。
+- 模板实时通讯与登录时效调整：Socket.IO 连接与恢复流程、会话空闲/绝对超时和续签行为对齐。
+- 新增 `.agents/skills` 与 KeepSeek / Codex 共享项目配置，生成的工程直接带后端、ORM、调度与前端开发指南。
+- 首页与文档展示版本同步为 `0.2.4`。
+
+## 0.2.3
+
+- 首次以 `kmvpy` 名称发布 FastAPI 服务端基础库，提供 YAML 配置、异步 SQLAlchemy 领域层、统一响应与异常、JWT、APScheduler 调度、Socket.IO 和工程脚手架。
+- `kmvpy.core.main` 提供 ASGI 装配：`init_asgi_app` 一次性完成日志、国际化、CORS、Socket.IO、路由和全局异常处理；`lifespan` 负责初始化与释放应用显式注入的 Storage，并在退出时依次关闭调度器、Socket.IO 与连接池。
+- 应用不再隐式创建 Storage，改为由应用显式持有并传入 `init_asgi_app`，使 ORM/服务访问与启动、关闭共用同一套数据库和 Redis 资源。
+- 新增可选的启动期表结构初始化 `init_tables_by_orms`：MySQL 支持列级 diffs、ALTER 与索引同步；PostgreSQL/SQLite 支持自动建表、补齐新增列并保留默认值，对库中存在但 ORM 未声明的列只告警不删除。
+- 配置体系以 `BaseConfig` 统一描述数据库、Redis、日志、服务与 CORS、国际化、Socket.IO、认证、首个管理员、雪花 ID 与时区；保留顶层 `database`/`redis` 以兼容旧工程，新工程推荐使用 `default_storage`。
+- 数据库默认包含异步 SQLite（aiosqlite）与 PostgreSQL（asyncpg）驱动，MySQL 通过 `mysql` extra 安装 `aiomysql`；表单上传、冒烟测试与构建工具分别由 `multipart`、`test`、`dev` 提供，OpenAI、Cassandra、aiofiles、同步 mysqlclient 等未实际使用的依赖不再默认安装。
+- ORM 层 `KOrmStorage`/`KOrmBase` 提供异步会话、分页、结构化安全排序（不拼接 SQL 文本）、缓存协作与雪花 ID；Redis 配置新增可选 `username`，未配置时保持原有仅密码认证，Socket.IO 的 Redis 客户端同样支持 ACL。
+- 认证改为「短寿命非对称 access JWT + Redis 登录 session」：JWT 仅允许 RS/PS/ES 系列算法，配置只接受密钥文件路径并拒绝内联 PEM 与旧字段，启动时校验 `kid` 唯一性与私钥/公钥匹配，生产环境拒绝过宽的私钥文件权限。
+- 新增 `AuthSessionService`：签发登录令牌、空闲与绝对双重超时、自动续签、并发会话上限、单会话注销与按用户批量注销；会话 Cookie 采用 `__Host-` 前缀、HttpOnly 且管理员更严格的 SameSite 策略，检测到会话密钥重放时整族会话失效。
+- JWT 支持公钥集合验签、`kid` 轮换过渡期、`extra_claims` 扩展以及导出 JWKS 公钥集，便于资源服务在本地验签。
+- Socket.IO 改用受维护的 python-socketio 直接适配（`SocketManager`），替换已归档的 fastapi-socketio 包装；保持默认 `/ws/socket.io` 端点与既有命名空间、鉴权、房间和事件接口，暴露 `server`/`asgi_app` 公开对象，并在关闭时释放 Engine.IO 与 Redis 管理器监听连接。
+- 调度模块提供 `Schedule`、`ScheduleConfig`、`ScheduleManager` 与 `schedule_task` 装饰器，支持 cron 任务与启动型任务（`cron=None` 启动时触发一次），按 `kid` 唯一注册并允许同类任务多实例，启停已与 ASGI 生命周期联动。
+- 统一响应 `ApiResponse`/`SocketioResponse` 与 `KmvException`/`KmvError` 约定业务码，应用层将业务异常、参数校验失败与未捕获异常统一转换为结构化 JSON。
+- 日志模块提供 `init_logger`、`api_log` 装饰器等能力：按大小轮转并异步归档为 `.tar.gz`、按 `backup_count` 清理最旧归档、默认脱敏敏感字段、非 debug 模式下仅摘要打印返回体。
+- 冒烟测试骨架 `StBasePyTest`/`StTestCase`/`StExpect` 支持 YAML 数据驱动接口验收，可通过 `build_request_kwargs`、`after_step_hook` 与 `NextStepRequest` 扩展动态参数与鉴权流程。
+- 新增 CLI `kmvpy`：`create` 生成后端 + SPA 一体工程，`update` 增量补齐缺失文件并安全升级旧版 `biu` 与 `deploy.sh`，`gentpl` 从调试工程反向回写模板，`nginx` 输出 API/SPA 网关模板，`rotate-jwt-keys` 自动轮换 user/admin JWT 密钥。
+- 脚手架生成物包含 VS Code 配置、AI 开发指引（`.agents/skills`）、后端 DTO/Router/Service/Hub/ORM/调度注册、Quasar/Vue 页面、实时连接验收用例、`biu` 构建部署命令与运维文档；支持按工程名、相对路径或当前目录定位工程。
+- `gentpl` 按 Git 目录作用域与规则优先级跳过被忽略文件，并叠加内置忽略规则，避免把 `node_modules`、`__pycache__`、构建产物等运行时内容写回模板。
+- 生成的 `biu` 覆盖本地构建、`deploy`（整体 / `py` / `spa` / `config`）、`--update-config` 远端配置备份覆盖、`--rotate-jwt-keys` 启动前轮换密钥、`--no-deps` 与 `conda create`，并按域名生成 nginx 配置。
+- nginx 模板覆盖 API 反向代理（WebSocket 升级、CORS 透传、multipart 体积与超时预留）和 SPA 静态站点（history 回退、长缓存静态资源、`index.html` 不缓存）两类场景。
+- 新增依赖与发布治理：`pyproject.toml` 使用 PEP 621 元数据与动态版本（唯一来源 `kmvpy/__init__.py`），支持 Python 3.11–3.13，Intel macOS 与其它平台分别使用 cryptography 48.x/50.x 兼容范围，并配套 `docs/DEPENDENCIES.md` 迁移与验收说明以及 PyPI Trusted Publishing 发布流程文档。
+- 补充完整的回归与兼容性保障：覆盖配置、JWT、会话、Socket.IO、调度、ORM 初始化和生成器的测试，GitHub Actions 在干净环境安装声明依赖并执行 `pip check` 与全量回归，发布工作流依赖该兼容性检查后再上传。
